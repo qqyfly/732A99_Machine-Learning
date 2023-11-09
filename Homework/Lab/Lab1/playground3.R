@@ -7,6 +7,8 @@ names(data)[9] <- "diabetes"
 names(data)[2] <- "plasma"
 names(data)[8] <- "age"
 
+x <- age
+y <- plasma
 df <- data.frame(x, y)
 
 ggplot2::ggplot(df, ggplot2::aes(age, plasma)) + ggplot2::geom_point(ggplot2::aes(colour =  data[, 9]))+
