@@ -31,21 +31,26 @@ test_set <- data[test_id, ]
 
 # since the training data is a image, we do not apply normalization
 
-error_rates <- rep(30,0)
+##########################################################
+
+###########################################################
+
+
+error_rates <- rep(30, 0)
 
 for(k_value in 1:30){
-    # apply kknn function, cols_num = 65 is the last column which is the label value
+    # apply kknn function
     fit_kknn <- kknn(label_value ~ .,
-                    train_set,
-                    test_set,
-                    k = k_value,
-                    distance = 1,
-                    kernel = "rectangular")
+                     train_set,
+                     test_set,
+                     k = k_value,
+                     distance = 1,
+                     kernel = "rectangular")
 
     fit <- fitted(fit_kknn)
 
     # generate confusion matrix
-    confusion_matrices <- table(fit, test_set$label_value)
+    confusion_matrices <- table(round(fit), test_set$label_value)
 
     # calculate accuracy
     accuracy <- sum(diag(confusion_matrices)) / sum(confusion_matrices)
@@ -57,4 +62,4 @@ for(k_value in 1:30){
 x <- 1:30
 y <- error_rates
 error_rate_data <- data.frame(x, y)
-ggplot2::ggplot(error_rate_data, ggplot2::aes(x, y)) + ggplot2::geom_point()
+ggplot2::ggplot(error_rate_data, ggplot2::aes(x, y)) + ggplot2::geom_line()
