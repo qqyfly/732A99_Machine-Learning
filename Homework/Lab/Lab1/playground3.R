@@ -18,4 +18,3 @@ ggplot2::labs(x = "age",y="Plasma glucose")
 model <- glm(diabetes ~ plasma + age, family = gaussian, data = data)
 
 summary(model)
-
