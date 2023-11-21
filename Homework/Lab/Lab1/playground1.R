@@ -120,34 +120,40 @@ heatmap(x = eight_images_matrix, Rowv = NA, Colv = NA)
 ######################  Assignment 1.4 #########################################
 # calculate error rate for different k values
 
-error_rates <- rep(30, 0)
+error_rates_train <- rep(0, 30)
+error_rates_validate <- rep(0, 30)
 
 for(k_value in 1:30){
-  # apply kknn function
-  fit_kknn <- train.kknn(label_value ~ .,
-                         train_set,
-                         test_set,
-                         k = k_value,
-                         distance = 1,
-                         kernel = "rectangular")
+  # apply kknn function 
+  train_kknn <- train.kknn(label_value ~ .,
+                       data = train_set,
+                       kmax = k_value,
+                       kernel = "rectangular")
 
-  predict_data <- predict(fit_kknn,newdata = test_set)
+ predict_data_train <- predict(train_kknn,newdata=train_set)
+  predict_data_validation <- predict(train_kknn,newdata=valid_set)
 
   # generate confusion matrix
-  confusion_matrices <- table(round(fit), test_set$label_value)
+  confusion_matrices_train <- table(round(predict_data_train), train_set$label_value)
+  confusion_matrices_validation <- table(round(predict_data_validation), valid_set$label_value)
 
   # calculate accuracy
-  accuracy <- sum(diag(confusion_matrices)) / sum(confusion_matrices)
+  accuracy_train <- sum(diag(confusion_matrices_train)) / sum(confusion_matrices_train)
+  accuracy_validation <- sum(diag(confusion_matrices_validation)) / sum(confusion_matrices_validation)
 
   # calculate error rate
-  error_rates[k_value] <- 1 - accuracy
+  error_rates_train[k_value] <- 1 - accuracy_train
+  error_rates_validate[k_value] <- 1 - accuracy_validation
 }
 
 # plot the error rate graph
-x <- 1:30
-y <- error_rates
-error_rate_data <- data.frame(x, y)
-ggplot2::ggplot(error_rate_data, ggplot2::aes(x, y)) + ggplot2::geom_line() + ggplot2::labs(x = "K",y="error rate")
+k <- 1:30
+
+error_rate_data <- data.frame(k, error_rates_train,error_rates_validate)
+ggplot2::ggplot() + 
+  ggplot2::geom_line(error_rate_data,mapping=ggplot2::aes(x=k,y=error_rates_train),colour="blue") + 
+  ggplot2::geom_line(error_rate_data,mapping=ggplot2::aes(x=k,y=error_rates_validate),colour="red") + 
+  ggplot2::labs(x = "K",y="error rate")
 
 ######################  TODO:Assignment 1.5 ####################################
 # calculate error rate for different k values with an extra constant 
