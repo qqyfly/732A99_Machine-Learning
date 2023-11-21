@@ -43,11 +43,10 @@ test_pred <- predict(model, test_set)
 # calculate test MSE
 test_mse <- mean((test_pred - test_set$motor_UPDRS)^2)
 
-# TODO: comment on which variables contribute significantly to the model
 
 ###########################  Assignment 2.3 ####################################
 # Loglikelihood function
-loglikelihood <- function(theta, sigma) {
+loglikelihood <- function(theta, sigma, x) {
   return(sum(theta * log(sigma) + (1 - theta) * log(1 - sigma)))
 }
 
