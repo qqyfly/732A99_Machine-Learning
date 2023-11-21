@@ -4,13 +4,12 @@ author:
   - Qinyuan Qi(qinqi464)
   - Satya Sai Naga Jaya Koushik	Pilla (satpi345)
   - Daniele	Bozzoli(danbo826)  
-date: "2023-11-19"
+date: "`r Sys.Date()`"
 output: pdf_document
 ---
 
-<<<<<<< HEAD
 ```{r setup1, include=FALSE}
-###########################  Init code #########################################
+###########################  Init code For Assignment 1 ########################
 rm(list = ls())
 knitr::opts_chunk$set(echo = TRUE)
 library(kknn)
@@ -18,10 +17,12 @@ library(kknn)
 
 ## Assignment 1: Handwritten digit recognition with K- nearest neighbors  (Solved by Qinyuan Qi - qinqi464)
 
-\textbf{\textcolor{blue}{Answer:}}
+### Answer:
 
-\textbf{(1)}
+### (1)
+
 The following code will input the data and divide the data into training, validation and test sets.
+
 ```{r 1.1}
 ######################  Assignment 1.1 #########################################
 # read data
@@ -48,16 +49,16 @@ train_set <- data[train_id, ]
 
 set.seed(12345)
 test_val_id <- setdiff(1:row_num, train_id)
-test_id <- sample(test_val_id, floor(row_num * ratio[2]))
-test_set <- data[test_id, ]
-
-valid_id <- setdiff(test_val_id, test_id)
+valid_id <- sample(test_val_id, floor(row_num * ratio[2]))
 valid_set <- data[valid_id, ]
+
+test_id <- setdiff(test_val_id, valid_id)
+test_set <- data[test_id, ]
 ```
 
-\textbf{(2)}
+### (2)
 
-The following code contain a function call to kknn with k=30 and kernel = ”rectangular”. We calculate the confusion matrices and the misclassification errors. The code is attached in the appendix.
+The code(Check appendix) contain a function call to kknn with k=30 and kernel = ”rectangular”. We calculate the confusion matrices and the misclassification errors.
 
 ```{r 1.2, include=FALSE}
 ######################  Assignment 1.2 #########################################
@@ -85,19 +86,20 @@ The confusion_matrices is as follows:
 |   | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 |
 |:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|
 | 0 |98 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
-| 1 | 0 |101| 0 | 0 | 0 | 0 | 1 | 0 | 2 | 0 |
-| 2 | 1 | 0 |108| 1 | 0 | 1 | 0 | 0 | 0 | 0 |
-| 3 | 0 | 0 | 0 |80 | 0 | 0 | 0 | 0 | 0 | 0 |
-| 4 | 0 | 1 | 1 | 1 |99 | 0 | 1 | 0 | 2 | 0 |
-| 5 | 0 | 0 | 2 | 1 | 0 |83 | 0 | 0 | 1 | 1 |
-| 6 | 0 | 1 | 1 | 6 | 7 | 1 |81 | 0 | 2 | 0 |
-| 7 | 0 | 0 | 0 | 0 | 1 | 5 | 0 |96 | 0 | 3 |
-| 8 | 0 | 1 | 0 | 1 | 0 | 1 | 0 | 1 |77 | 4 |
-| 9 | 0 | 0 | 0 | 1 | 1 | 1 | 0 | 0 | 0 |77 |
+| 1 | 0 |70 | 0 | 0 | 0 | 0 | 1 | 0 | 0 | 0 |
+| 2 | 1 |26 |87 | 0 | 1 | 0 | 2 | 0 | 1 | 0 |
+| 3 | 0 | 4 |11 |52 | 3 | 0 | 0 | 0 | 1 | 2 |
+| 4 | 0 | 1 | 8 |25 |74 | 3 | 0 | 1 | 2 | 0 |
+| 5 | 0 | 1 | 4 |12 |18 |66 | 1 | 0 | 4 | 2 |
+| 6 | 0 | 0 | 1 | 2 | 6 |19 |80 | 5 |10 | 6 |
+| 7 | 0 | 2 | 1 | 0 | 5 | 4 | 0 |90 |18 |13 |
+| 8 | 0 | 1 | 0 | 0 | 1 | 1 | 0 | 1 |48 |42 |
+| 9 | 0 | 0 | 0 | 1 | 1 | 1 | 0 | 0 | 0 |20 |
 
-As what the data show in the confusion matrix, we can find that the accuracy of number 0,3 are super high. For most of the numbers, the accuracy are still very.And we got a total accuracy rate of 0.9424084, and total error rate is 0.05759162.
+As what the data show in the confusion matrix, we can find that the accuracy of number 0,1,2,9 are super high. For most of the numbers, the accuracy are acceptable.And we got a total accuracy rate of 0.7172775, and total error rate is 0.2827225.
 
-\textbf{(3)}
+### (3)
+
 We use the following code to generate heatmaps. By show 205 heat images one by 
 one, we found first 2 images(index 18,50) looks like 8, but next 3 images(index 1, 2,55) not like 8 at all.
 
@@ -133,7 +135,7 @@ heatmap(x = eight_images_matrix, Rowv = NA, Colv = NA)
 
 ```
 
-\textbf{(4)}
+### (4)
 
 We fit the KNN with k = 1 to 30, we plot the error rates as follows, the code is attached in appendix.
 
@@ -143,44 +145,39 @@ And according to the graph, we can know that the optimal K is 1.
 ```{r 1.4,echo = FALSE}
 ######################  Assignment 1.4 #########################################
 # calculate error rate for different k values
-
-error_rates_train <- rep(30, 0)
-error_rates_validate <- rep(30, 0)
+error_rates_valid <- rep(0, 30)
 
 for(k_value in 1:30){
   # apply kknn function 
-  train_kknn <- train.kknn(label_value ~ .,
-                       data = train_set,
-                       kmax = k_value,
+  valid_kknn <- kknn::kknn(label_value ~ .,
+                       train_set,
+                       valid_set,
+                       k = k_value,
                        kernel = "rectangular")
 
-  predict_data_train <- predict(train_kknn,newdata=train_set)
-  predict_data_validation <- predict(train_kknn,newdata=valid_set)
-
+ predict_data_valid <- predict(valid_kknn,newdata=valid_set)
+ 
   # generate confusion matrix
-  confusion_matrices_train <- table(round(predict_data_train), train_set$label_value)
-  confusion_matrices_validation <- table(round(predict_data_validation), valid_set$label_value)
+ confusion_matrices_valid <- table(round(predict_data_valid), valid_set$label_value) 
 
-  # calculate accuracy
-  accuracy_train <- sum(diag(confusion_matrices_train)) / sum(confusion_matrices_train)
-  accuracy_validation <- sum(diag(confusion_matrices_validation)) / sum(confusion_matrices_validation)
+ # calculate accuracy
+ accuracy_valid <- sum(diag(confusion_matrices_valid)) / sum(confusion_matrices_valid)
 
   # calculate error rate
-  error_rates_train[k_value] <- 1 - accuracy_train
-  error_rates_validate[k_value] <- 1 - accuracy_validation
+  error_rates_valid[k_value] <- 1 - accuracy_valid
+ 
 }
 
 # plot the error rate graph
 k <- 1:30
 
-error_rate_data <- data.frame(k, error_rates_train,error_rates_validate)
-ggplot2::ggplot() + 
-  ggplot2::geom_line(error_rate_data,mapping=ggplot2::aes(x=k,y=error_rates_train),colour="blue") + 
-  ggplot2::geom_line(error_rate_data,mapping=ggplot2::aes(x=k,y=error_rates_validate),colour="red") + 
+error_rate_data <- data.frame(k, error_rates_valid)
+ggplot2::ggplot() +
+  ggplot2::geom_line(error_rate_data,mapping = ggplot2::aes(x=k,y=error_rates_valid)) +  
   ggplot2::labs(x = "K",y="error rate")
 ```
 
-\textbf{(5)}
+### (5)
 
 The cross-entropy is defined as $-\sum_{i=1}^{N}\sum_{m=1}^{M}I(Y_{i}=C_{m}) * log\hat{p}(y_{i}=C_{m})$.
 
@@ -229,12 +226,13 @@ The reason why we use cross-entropy is more suitable is:
 2) In multinomial distribution, the predicted value will more likely to be explained as a probability, and cross-entropy loss function is designed to compare the probability based prediction.
 
 
-## Assignment 2: Linear regression and ridge regressions  (Solved by Satya Sai Naga Jaya Koushik	Pilla)
+## Assignment 2: Linear regression and ridge regressions (Solved by Satya Sai Naga Jaya Koushik Pilla)
 
-\textbf{\textcolor{blue}{Answer:}}
+### Answer:
+
 
 ```{r setup2, include=FALSE}
-###########################  Init code #########################################
+###########################  Init code For Assignment 2 ########################
 rm(list = ls())
 knitr::opts_chunk$set(echo = TRUE)
 
@@ -243,13 +241,11 @@ knitr::opts_chunk$set(echo = TRUE)
 normalize <- function(x) {
   return((x - min(x)) / (max(x) - min(x)))
 }
-
 ```
 
-\textbf{(1)}
+### (1)
 
 We read the data and divide data into training and test data (60/40) and normalize them.
-
 ```{r 2.1}
 ###########################  Assignment 2.1 ####################################
 # Load the data
@@ -274,11 +270,15 @@ test_set <- data[test_id, ]
 train_set <- as.data.frame(lapply(train_set, normalize))
 test_set <- as.data.frame(lapply(test_set, normalize))
 ```
-\textbf{(2)}
+
+### (2)
+
 We create a linear model using following code, we get the parameters as show below.
 
 ```{r 2.2}
 ###########################  Assignment 2.2 ####################################
+# Linear regression model
+
 # apply linear regression
 model <- lm(motor_UPDRS ~ ., data = train_set)
 
@@ -291,11 +291,11 @@ model
 ```
 
 And we get test MSE = 0.005370424
+we know that Shimmer.APQ3 and Shimmer.DDA contribute significantly to the model
 
-we know that Shimmer.APQ3 and Shimmer.DDA contribute significantly to the model.
+### (3)
 
-\textbf{(3)}
-
+Functions implemented as below.
 ```{r 2.3}
 ###########################  Assignment 2.3 ####################################
 # Loglikelihood function
@@ -340,7 +340,9 @@ df <- function(X,lambda) {
 }
 ```
 
-\textbf{(4)}
+### (4)
+
+Functions implemented as below.
 ```{r 2.4}
 ###########################  Assignment 2.4 ####################################
 
@@ -360,25 +362,16 @@ df <- function(X,lambda) {
 
 ## Assignment 3. Logistic regression and basis function expansion (Solved by Daniele	Bozzoli)
 
-\textbf{\textcolor{blue}{Answer:}}
+### Answer:
 
 ```{r setup3, include=FALSE}
-###########################  Init code #########################################
+###########################  Init code For Assignment 3 ########################
 rm(list = ls())
-=======
-```{r setup, include=FALSE}
-###########################  Init code #########################################
->>>>>>> ff9d7c9a08290aaf51cff2195036a992cf29408e
 knitr::opts_chunk$set(echo = TRUE)
-rm(list = ls())
+library(ggplot2)
 ```
 
-<<<<<<< HEAD
-\textbf{(1)}
-The plot was generated as following.
-
-As can be seen on the plot, we can know that diabetes is easy to classify by a standard logistic regression model by just using 2 features.
-
+### (1)
 
 ```{r 3.1}
 data <- read.csv("pima-indians-diabetes.csv")
@@ -394,119 +387,112 @@ x <- age
 y <- plasma
 df <- data.frame(x, y)
 
-ggplot2::ggplot(df, ggplot2::aes(age, plasma)) + 
-ggplot2::geom_point(ggplot2::aes(colour =  data[, 9]))+
-ggplot2::labs(x = "age",y="Plasma glucose")
+ggplot2::ggplot(df, ggplot2::aes(age, plasma)) +
+  ggplot2::geom_point(ggplot2::aes(colour = data[, 9]))+
+  ggplot2::labs(x = "Age", y="Plasma glucose")
 
 ```
-\textbf{(2)}
-The logistic regression model was trained using glm function as following.
 
-```{r 3.2}
-model <- glm(diabetes ~ plasma + age, family = gaussian, data = data)
+We observe how a lot of people without diabete is highly concentrated in the lower 
+part of the age axis, explaining how younger individuals tend to be non-diabetic,
+on the other hand, we notice how especially people with higher plasma glucose 
+concentration tend to be diabetic, less concentrated in a specific age group, more
+spread across the x-age axis.
 
+### (2)(3)
+
+Code as below.
+Looking at the graph, we notice how the classification is not very accurate. Though, it 
+catches the fact that people with higher plasma glucose concentration are more 
+commonly diabetic. We obtain a misclassification error = 0.266.
+
+```{r 3.2_3.3}
+
+model <- glm(diabetes ~ plasma + age, fam = binomial(link="logit"), data = data)
 summary(model)
+
+# r = 0.5
+
+c1 <- fitted(model) >= .5
+
+missC_error <- sum(data$diabetes != c1) / nrow(data)
+cat("Misclassification error:", missC_error, "\n")
+
+ggplot2::ggplot(df, ggplot2::aes(age, plasma)) +
+  ggplot2::geom_point(ggplot2::aes(colour = c1))+
+  ggplot2::labs(x = "Age", y="Plasma glucose")     # T = Diabetic, F = Non-diabetic
+
 ```
 
-\textbf{(3)}
 
-\textbf{(4)}
+### (4)
 
-\textbf{(5)}
+It looks like the line that splits the predicted observations into diabetic
+and non diabetic into the two cases ( r= 0.2 and r=0.8) has the same slope, but
+different intercept. Both cases are pretty bad predictors as 0.2 and 0.8 are
+respectively too low and too high to get a good classification for our case.
+
+```{r 3.4}
+
+# r = 0.2
+
+c2 <- fitted(model) >= .2
+
+ggplot2::ggplot(df, ggplot2::aes(age, plasma)) +
+  ggplot2::geom_point(ggplot2::aes(colour = c2))+
+  ggplot2::labs(x = "Age", y="Plasma glucose")
+
+# r = 0.8
+
+c3 <- fitted(model) >= .8
+
+ggplot2::ggplot(df, ggplot2::aes(age, plasma)) +
+  ggplot2::geom_point(ggplot2::aes(colour = c3))+
+  ggplot2::labs(x = "Age", y="Plasma glucose")
+
+```
+
+### (5)
+
+The outcome of this analysis is better than the first case, as we obtain a 
+lower misclassification error than before, and also graphically we notice
+how this version captures what we were saying in the first part of the 
+analysis, how people with higher plasma glucose concentration are more 
+exposed to the risk of having diabete. We also notice how we strangely get a 
+misclassificated predicted value in the bottom right corner of the graph.
+
+```{r 3.5}
+
+# Adding new variables, logit function with r= 0.5
+
+z1 <- data$plasma^4
+z2 <- data$plasma^3 * data$age
+z3 <- data$plasma^2 * data$age^2
+z4 <- data$plasma^1 * data$age^3
+z5 <- data$age^4
+
+newdata <- cbind(data, z1, z2, z3, z4, z5)
+
+newmodel <- glm(diabetes ~ plasma + age + z1 + z2 + z3 + z4 + z5 , family = binomial(link = "logit") , data = newdata)
+
+summary(newmodel)
+
+c4 <- fitted(newmodel) >= .5
+
+new_missC_error <- sum(data$diabetes != c4) / nrow(data)
+cat("Misclassification error:", new_missC_error, "\n")
+
+ggplot2::ggplot(df, ggplot2::aes(age, plasma)) +
+  ggplot2::geom_point(ggplot2::aes(colour = c4))+
+  ggplot2::labs(x = "Age", y="Plasma glucose")
+
+```
+
+
+
 
 \newpage
 # Appendix: All code for this report
 
 ```{r ref.label=knitr::all_labels(), echo=TRUE, eval=FALSE}
 ```
-=======
-## Assignment 1: Handwritten digit recognition with K- nearest neighbors  (Solved by Qinyuan Qi - qinqi464)
-
-\textbf{\textcolor{blue}{Answer:}}
-
-\textbf{(1)}
-
-```{r 1.1}
-######################  Assignment 1.1 #########################################
-# read data
-data <- read.csv("./Homework/Lab/Lab1/optdigits.csv")
-row_num <- nrow(data)
-cols_num <- ncol(data)
-
-# set the last column name as "label_value" since we need to create a formula
-names(data)[cols_num] <- "label_value"
-
-# set data split ratio to 0.5, 0.25 and 0.25
-ratio <- c(train = .5, test = .25, validate = .25)
-
-# data pre-processing
-# columns 1-64 are number based and do not need to be normalized, last column
-# is integer represent number from 0-9 which don't need to process again
-
-# set random seed
-set.seed(12345)
-
-# split data to training, test and validation set
-train_id <- sample(1:row_num, floor(row_num * ratio[1]))
-train_set <- data[train_id, ]
-
-set.seed(12345)
-test_val_id <- setdiff(1:row_num, train_id)
-test_id <- sample(test_val_id, floor(row_num * ratio[2]))
-test_set <- data[test_id, ]
-
-valid_id <- setdiff(test_val_id, test_id)
-valid__set <- data[valid_id, ]
-```
-
-\textbf{(2)}
-
-The following code contain a function call to kknn with k=30 and kernel = ”rectangular”. We calculate the confusion matrices and the misclassification errors. The code as below.
-
-```{r 1.2}
-# calculate error rate for k = 30
-k_value <- 30
-fit_kknn <- kknn::kknn(label_value ~ .,
-                       train_set,
-                       test_set,
-                       k = k_value,
-                       distance = 1,
-                       kernel = "rectangular")
-
-fit <- fitted(fit_kknn)
-
-# generate confusion matrix
-confusion_matrices <- table(round(fit), test_set$label_value)
-
-# calculate accuracy
-accuracy <- sum(diag(confusion_matrices)) / sum(confusion_matrices)
-
-# calculate error rate
-error_rate <- 1 - accuracy
-```
-
-The confusion_matrices is as follows:
-
-|   | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 |
-|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|
-| 0 |97 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
-| 1 | 2 |80 | 0 | 0 | 0 | 0 | 1 | 0 | 0 | 0 |
-| 2 | 0 |20 |91 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
-| 3 | 0 | 1 | 9 |57 | 0 | 0 | 0 | 0 | 3 | 1 |
-| 4 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
-| 5 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
-| 6 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
-| 7 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
-| 8 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
-| 9 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
-
-The error_rate is.
-
-
-
-\textbf{(3)}
-
-\textbf{(4)}
-
-\textbf{(5)}
->>>>>>> ff9d7c9a08290aaf51cff2195036a992cf29408e
