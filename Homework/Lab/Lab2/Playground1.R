@@ -38,7 +38,7 @@ lm_model <- lm(Fat ~ ., data = train_data_set)
 summary(lm_model)
 
 predicted_fat1 <- predict(lm_model, train_data_set)
-train_mse1 <- mean((predicted_fat - test_data_set$Fat)^2)
+train_mse1 <- mean((predicted_fat1 - train_data_set$Fat)^2)
 
 
 # predict the test set
