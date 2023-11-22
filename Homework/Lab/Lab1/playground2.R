@@ -1,5 +1,6 @@
-##################################  Init Code ##################################
+###########################  Init code For Assignment 2 ########################
 rm(list = ls())
+knitr::opts_chunk$set(echo = TRUE)
 
 ###########################  Common Functions ##################################
 # normalize data
@@ -7,10 +8,9 @@ normalize <- function(x) {
   return((x - min(x)) / (max(x) - min(x)))
 }
 
-# 2A DONE
 ###########################  Assignment 2.1 ####################################
 # Load the data
-data <- read.csv("./Homework/Lab/Lab1/parkinsons.csv")
+data <- read.csv("parkinsons.csv")
 row_num <- nrow(data)
 cols_num <- ncol(data)
 
@@ -42,32 +42,60 @@ test_pred <- predict(model, test_set)
 
 # calculate test MSE
 test_mse <- mean((test_pred - test_set$motor_UPDRS)^2)
-
+model
 
 ###########################  Assignment 2.3 ####################################
 # Loglikelihood function
-loglikelihood <- function(theta, sigma, x) {
-  return(sum(theta * log(sigma) + (1 - theta) * log(1 - sigma)))
+loglikelihood <- function(theta, sigma) {
+  n <- length(Y)
+  log_likelihood_values <- -0.5 * (log(2 * pi * sigma^2) + ((Y - theta %*% X) / sigma)^2)
+  return(total_log_likelihood <- sum(log_likelihood_values))
 }
 
-ridge <- function(theta, sigma, lambda) {
+# ridge
+ridge <- function(param) {
+  param_length <- length(param)
+  theta <- param[1:param_length-2]
+  sigma <- param[param_length-1]
+  lambda <- param[param_length] 
+  loglikelihood_result <- loglikelihood(theta, sigma)
+  ridge_penalty <- lambda * sum(theta^2)
+  return(loglikelihood_result - ridge_penalty)
 }
 
-ridgeopt <- function(x, y, lambda) {
+# ridgeopt
+ridgeopt <- function(theta, sigma, lambda) {
+  size_theta <- length(theta)
+  param <- rep(0,size_theta+2)
+  for(i in 1:size_theta){
+    param[i] <- theta[i]
+  }
+  param[size_theta + 1] <- sigma
+  param[size_theta + 2] <- lambda
+  ridge_result <- optim(par = param, fn = ridge, method="BFGS")
+  
 }
 
-df <- function() {
+# df
+df <- function(X,lambda) {
+  n <- nrow(X)
+  # calculate hat_matrix
+  hat_matrix <- X %*% solve(t(X) %*% X + lambda * diag(ncol(X)))
+  # get degree of the hat_matrix
+  df_ridge <- sum(diag(hat_matrix))
+  return(df_ridge)
 }
 
 ###########################  Assignment 2.4 ####################################
-# Compute optimal $\theta$ parameter for $\lambda=1,\lambda=100,\lambda=1000$
 
-# predict the motor_UPDRS values for training and test data and report the 
-# training and test MSE values. 
+#sigma <- 0.01
+#theta <- rep(1,21)
+#X <- train_set[] 
+#lambda <- 1
+#ridgeopt(theta,sigma,lambda)
 
-# Which penalty parameter is most appropriate among the selected ones? 
+#lambda <- 100
+#ridgeopt(theta,sigma,lambda)
 
-# Compute and compare the degrees of freedom of these models and make 
-# appropriate conclusions
-
-# TODO: Finish all of them
+#lambda <- 1000
+#ridgeopt(theta,sigma,lambda)
