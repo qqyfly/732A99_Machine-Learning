@@ -64,15 +64,17 @@ The code(Check appendix) contain a function call to kknn with k=30 and kernel = 
 ######################  Assignment 1.2 #########################################
 # calculate error rate for k = 30
 k_value <- 30
-train_kknn <- train.kknn(label_value ~ .,
-                       data = train_set,
-                       kmax = k_value,
+
+train_kknn <- kknn::kknn(label_value ~ .,
+                       train_set,
+                       valid_set,
+                       k = k_value,
                        kernel = "rectangular")
 
-predict_data <- predict(train_kknn,newdata=test_set)
+predict_data <- predict(train_kknn,newdata=valid_set)
 
 # generate confusion matrix
-confusion_matrices <- table(round(predict_data), test_set$label_value)
+confusion_matrices <- table(round(predict_data), valid_set$label_value)
 
 # calculate accuracy
 accuracy <- sum(diag(confusion_matrices)) / sum(confusion_matrices)
