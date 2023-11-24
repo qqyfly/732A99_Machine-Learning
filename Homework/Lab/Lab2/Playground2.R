@@ -18,6 +18,9 @@ set.seed(12345)
 train_id <- sample(1:row_num, floor(row_num * ratio[1]))
 train_set <- data[train_id, ]
 
+# set random seed
+set.seed(12345)
+
 validation_test_id <- setdiff(1:row_num, train_id)
 validation_id <- sample(validation_test_id, floor(row_num * ratio[2]))
 validation_set <- data[validation_id, ]
@@ -25,3 +28,4 @@ validation_set <- data[validation_id, ]
 test_id <- setdiff(validation_test_id, validation_id)
 test_set <- data[test_id, ]
 
+######################  Assignment 2.2 #########################################
