@@ -187,3 +187,14 @@ x <- 1:30
 y <- error_rates
 error_rate_data <- data.frame(x, y)
 ggplot2::ggplot(error_rate_data, ggplot2::aes(x, y)) + ggplot2::geom_line() + ggplot2::labs(x = "K",y="error rate")
+
+
+
+
+
+
+
+
+
+
+
