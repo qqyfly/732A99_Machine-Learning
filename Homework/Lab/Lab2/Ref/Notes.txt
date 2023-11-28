@@ -1,0 +1,3 @@
+https://www.statology.org/lasso-regression-in-r/
+
+https://www.pluralsight.com/guides/linear-lasso-and-ridge-regression-with-r
