@@ -84,38 +84,6 @@ cat("Train mean squared error:", train_MSE, "\nTest mean squared error:", test_M
 
 # 4)
 
-train_noresponse <- trainS[,-101]
-y_true_train <- trainS[,101]
-
-test_noresponse <- testS[,-101]
-y_true_test <- trainS[,101]
-
-train_errors <- c()
-test_errors <- c()
-test_prints <- c(3)
-
-# cost function
-# data should NOT contain the response variable
-# No intercept is included in the underlying model
-cost_linreg <- function(theta){
-  
-  # Calculate train error
-  y_pred_train <- as.matrix(train_noresponse) %*% theta
-  train_cost <- mean((y_pred_train - y_true_train)^2)
-  train_errors <<- c(train_errors, train_cost)
-  
-  # Calculate test error
-  y_pred_test <- as.matrix(test_noresponse) %*% theta
-  test_cost <- mean((y_pred_test - y_true_test)^2)
-  test_errors <<- c(test_errors, test_cost)
-  
-  return(train_cost)
-}
-
-optim_object <- optim(rep(0, 100), method="BFGS", fn = cost_linreg, control = list(trace=T))
-
-cat(test_prints, "\n")
-
 
 
 
