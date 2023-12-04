@@ -54,56 +54,68 @@ model
 
 ###########################  Assignment 2.3 ####################################
 # Loglikelihood function
-loglikelihood <- function(theta, sigma) {
-  n <- length(Y)
-  log_likelihood_values <- -0.5 * (log(2 * pi * sigma^2) + ((Y - theta %*% X) / sigma)^2)
-  return(total_log_likelihood <- sum(log_likelihood_values))
+loglikelihood <- function(x,y, theta, sigma) {
+  n <- length(x)
+  log_likelihood_value <- -0.5 * (n * log(2 * pi * sigma^2)) -
+                          sum((t(theta) * x - y)^2) / (2 * sigma^2)
+  return(log_likelihood_value)
 }
 
 # ridge
-ridge <- function(param) {
-  param_length <- length(param)
-  theta <- param[1:param_length-2]
-  sigma <- param[param_length-1]
-  lambda <- param[param_length] 
-  loglikelihood_result <- loglikelihood(theta, sigma)
+ridge <- function(par,x,y,lambda) {
+
+  param_length <- length(par)
+
+  theta <- par[1:param_length - 1]
+  sigma <- par[param_length]
+
+  loglikelihood_result <- loglikelihood(x,y,theta, sigma)
   ridge_penalty <- lambda * sum(theta^2)
   return(loglikelihood_result - ridge_penalty)
 }
 
 # ridgeopt
-ridgeopt <- function(theta, sigma, lambda) {
-  size_theta <- length(theta)
-  param <- rep(0,size_theta+2)
-  for(i in 1:size_theta){
-    param[i] <- theta[i]
-  }
-  param[size_theta + 1] <- sigma
-  param[size_theta + 2] <- lambda
-  ridge_result <- optim(par = param, fn = ridge, method="BFGS")
+ridgeopt <- function(initial_values, x,y,lambda ) {
+  # Use optim function
   
+  result <- optim(par = initial_values, ridge, method = "BFGS",
+                  x = x, y = y,lambda = lambda)
+  return(result)
 }
 
 # df
-df <- function(X,lambda) {
-  n <- nrow(X)
-  # calculate hat_matrix
-  hat_matrix <- X %*% solve(t(X) %*% X + lambda * diag(ncol(X)))
-  # get degree of the hat_matrix
-  df_ridge <- sum(diag(hat_matrix))
-  return(df_ridge)
+df <- function(x, y, theta, sigma) {
+  hat_y <- t(theta) %*% x
+  return(sum(cov(hat_y, y)) / sigma^2)
 }
 
 ###########################  Assignment 2.4 ####################################
 
-#sigma <- 0.01
-#theta <- rep(1,21)
-#X <- train_set[] 
+x <- train_set[,-1]
+y <- train_set$motor_UPDRS
+
+
 #lambda <- 1
-#ridgeopt(theta,sigma,lambda)
+theta <- rep(1, ncol(x))
+sigma <- 1
+initial_values <- c(theta, sigma)
+result1 <- ridgeopt(initial_values=initial_values, x = x, y=y,lambda = 1 )
 
 #lambda <- 100
-#ridgeopt(theta,sigma,lambda)
+theta <- rep(1, ncol(x))
+sigma <- 1
+initial_values <- c(theta, sigma)
+result100 <- ridgeopt(initial_values=initial_values, x = x, y=y,lambda = 100 )
 
 #lambda <- 1000
-#ridgeopt(theta,sigma,lambda)
+theta <- rep(1, ncol(x))
+sigma <- 1
+initial_values <- c(theta, sigma)
+result1000 <- ridgeopt(initial_values=initial_values, x = x, y=y,lambda = 1000 )
+
+cat("lambda = 1, theta = ", result1$par[1:ncol(x)], "sigma = ", result1$par[ncol(x) + 1], "\n")
+cat("lambda = 100, theta = ", result100$par[1:ncol(x)], "sigma = ", result100$par[ncol(x) + 1], "\n")
+cat("lambda = 1000, theta = ", result1000$par[1:ncol(x)], "sigma = ", result1000$par[ncol(x) + 1], "\n")
+
+
+
