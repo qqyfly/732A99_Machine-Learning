@@ -133,7 +133,7 @@ knitr::kable(misclassification_rates_for_each_digits_data_1_2,
 
 ### (3)
 
-By using image function, we generate images on first 64 [8 image] data from learning data set, and we get the following plot.(We use image function instead of heatmap so we can draw more images in one plot)
+By using image function, we generate first 64 [8 image] from learning data set, and we get the following plot.(We use image function instead of heatmap so we can draw more images in one plot)
 
 According to the plot, we can find that image at [3,2] and [5,2] are easy to identify. however, images such as [3,4] [4,2] [4,3] are very hard to figure out the number.
 
@@ -284,6 +284,7 @@ error_cross_entropy_data <- data.frame(k_values,validation_errors)
 ggplot(data = error_cross_entropy_data) +
   geom_line(mapping = aes(x=k_values,y=validation_errors))  +
   labs(x = "K",y="Cross entropy error") 
+
 ```
 
 ## Assignment 2: Linear regression and ridge regressions (Solved by Satya Sai Naga Jaya Koushik Pilla)
@@ -294,22 +295,22 @@ ggplot(data = error_cross_entropy_data) +
 ```{r setup2, include=FALSE, eval=FALSE}
 ###########################  Init code For Assignment 2 ########################
 rm(list = ls())
+library(caret)
 knitr::opts_chunk$set(echo = TRUE)
 
-###########################  Common Functions ##################################
-# normalize data
-normalize <- function(x) {
-  return((x - min(x)) / (max(x) - min(x)))
-}
-```
 
 ### (1)
 
 We read the data and divide data into training and test data (60/40) and normalize them.
-```{r 2.1, eval=FALSE}
+```{r 2.1}
 ###########################  Assignment 2.1 ####################################
 # Load the data
 data <- read.csv("parkinsons.csv")
+
+# remove useless data
+data <- data[,-(1:4)]
+data <- data[,-(2)]
+
 row_num <- nrow(data)
 cols_num <- ncol(data)
 
@@ -326,20 +327,27 @@ train_set <- data[train_id, ]
 test_id <- setdiff(1:row_num, train_id)
 test_set <- data[test_id, ]
 
-# normalize data.
-train_set <- as.data.frame(lapply(train_set, normalize))
-test_set <- as.data.frame(lapply(test_set, normalize))
+# scale data.
+preProcValues <- preProcess(train_set, method = c("scale"))
+train_set <- predict(preProcValues,train_set)
+test_set <- predict(preProcValues,test_set)
+
 ```
 
 ### (2)
 
-We create a linear model using following code, we get the parameters as show below.
 
-```{r 2.2, eval=FALSE}
+We create a linear model, we get the output as show below.
+
+We have test MSE = 0.9354477.
+
+According to the output of the model, we also know that Jitter.RAP,Jitter.DDP,Shimmer.APQ3,Shimmer.DDA contribute significantly to the model.
+
+```{r 2.2,echo = FALSE}
 ###########################  Assignment 2.2 ####################################
 # Linear regression model
 
-# apply linear regression
+# apply linear regression(we already removed the data we don't need)
 model <- lm(motor_UPDRS ~ ., data = train_set)
 
 # predict the test value using the linear regression just created
@@ -347,16 +355,14 @@ test_pred <- predict(model, test_set)
 
 # calculate test MSE
 test_mse <- mean((test_pred - test_set$motor_UPDRS)^2)
+cat("test mse is " , test_mse , "\n")
 model
 ```
-
-And we get test MSE = 0.005370424
-we know that Shimmer.APQ3 and Shimmer.DDA contribute significantly to the model
 
 ### (3)
 
 Functions implemented as below.
-```{r 2.3, eval=FALSE}
+```{r 2.3}
 ###########################  Assignment 2.3 ####################################
 # Loglikelihood function
 loglikelihood <- function(theta, sigma) {
@@ -433,7 +439,7 @@ library(ggplot2)
 
 ### (1)
 
-```{r 3.1, eval=FALSE}
+```{r 3.1,echo = FALSE}
 data <- read.csv("pima-indians-diabetes.csv")
 
 age <- data[, 8]
@@ -466,7 +472,7 @@ Looking at the graph, we notice how the classification is not very accurate. Tho
 catches the fact that people with higher plasma glucose concentration are more 
 commonly diabetic. We obtain a misclassification error = 0.266.
 
-```{r 3.2_3.3, eval=FALSE}
+```{r 3.2_3.3}
 
 model <- glm(diabetes ~ plasma + age, fam = binomial(link="logit"), data = data)
 summary(model)
@@ -492,7 +498,7 @@ and non diabetic into the two cases ( r= 0.2 and r=0.8) has the same slope, but
 different intercept. Both cases are pretty bad predictors as 0.2 and 0.8 are
 respectively too low and too high to get a good classification for our case.
 
-```{r 3.4, eval=FALSE}
+```{r 3.4,echo = FALSE}
 
 # r = 0.2
 
@@ -521,7 +527,7 @@ analysis, how people with higher plasma glucose concentration are more
 exposed to the risk of having diabete. We also notice how we strangely get a 
 misclassificated predicted value in the bottom right corner of the graph.
 
-```{r 3.5, eval=FALSE}
+```{r 3.5, echo = FALSE}
 
 # Adding new variables, logit function with r= 0.5
 

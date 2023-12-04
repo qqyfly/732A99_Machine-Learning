@@ -10,7 +10,14 @@ normalize <- function(x) {
 
 ###########################  Assignment 2.1 ####################################
 # Load the data
-data <- read.csv("parkinsons.csv")
+data <- read.csv("./Homework/Lab/Lab1/parkinsons.csv")
+#data <- read.csv("./Homework/Lab/Lab1/optdigits.csv")
+
+
+# remove useless data
+data <- data[,-(1:4)]
+data <- data[,-(2)]
+
 row_num <- nrow(data)
 cols_num <- ncol(data)
 
@@ -28,8 +35,9 @@ test_id <- setdiff(1:row_num, train_id)
 test_set <- data[test_id, ]
 
 # normalize data.
-train_set <- as.data.frame(lapply(train_set, normalize))
-test_set <- as.data.frame(lapply(test_set, normalize))
+preProcValues <- preProcess(train_set, method = c("scale"))
+train_set <- predict(preProcValues,train_set)
+test_set <- predict(preProcValues,test_set)
 
 ###########################  Assignment 2.2 ####################################
 # Linear regression model
