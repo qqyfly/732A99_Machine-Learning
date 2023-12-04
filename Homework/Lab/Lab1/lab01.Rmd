@@ -13,6 +13,9 @@ output: pdf_document
 rm(list = ls())
 knitr::opts_chunk$set(echo = TRUE)
 library(kknn)
+library(ggplot2)
+library(Metrics)
+
 ```
 
 ## Assignment 1: Handwritten digit recognition with K- nearest neighbors  (Solved by Qinyuan Qi - qinqi464)
@@ -21,7 +24,7 @@ library(kknn)
 
 ### (1)
 
-The following code will input the data and divide the data into training, validation and test sets.
+The following code will import the data and divide the data into training, validation and test sets.
 
 ```{r 1.1}
 ######################  Assignment 1.1 #########################################
@@ -34,7 +37,7 @@ cols_num <- ncol(data)
 names(data)[cols_num] <- "label_value"
 
 # set data split ratio to 0.5, 0.25 and 0.25
-ratio <- c(train = .5, test = .25, validate = .25)
+ratio <- c(train = .5, validate = .25, test = .25)
 
 # data pre-processing
 # columns 1-64 are number based and do not need to be normalized, last column
@@ -58,182 +61,237 @@ test_set <- data[test_id, ]
 
 ### (2)
 
-The code(Check appendix) contain a function call to kknn with k=30 and kernel = ”rectangular”. We calculate the confusion matrices and the misclassification errors.
+The code contain a function call to kknn with k=30, kernel = ”rectangular” with distance default to 2. We calculate the confusion matrices and the misclassification errors of training and test data set as follows, the code attached in the appendix.
+As the data showed below, the overall prediction quality is not good enough when k=30. And the misclassification rate of number 0,6 is the lowest. number 8 and 9 have the highest misclassification rate.
 
-```{r 1.2, include=FALSE}
+```{r 1.2,echo = FALSE}
 ######################  Assignment 1.2 #########################################
-# calculate error rate for k = 30
+
 k_value <- 30
+kknn_train <- kknn(label_value ~ .,
+                         train_set,
+                         train_set,
+                         k = k_value,
+                         kernel = "rectangular",scale = TRUE)
 
-train_kknn <- kknn::kknn(label_value ~ .,
-                       train_set,
-                       valid_set,
-                       k = k_value,
-                       kernel = "rectangular")
+# generate confusion matrix for training data
+confusion_matrices_train <- table(round(kknn_train$fit), train_set$label_value)
 
-predict_data <- predict(train_kknn,newdata=valid_set)
+# print confusion matrix
+#print(confusion_matrices_train)
 
-# generate confusion matrix
-confusion_matrices <- table(round(predict_data), valid_set$label_value)
-
-# calculate accuracy
-accuracy <- sum(diag(confusion_matrices)) / sum(confusion_matrices)
 
 # calculate error rate
-error_rate <- 1 - accuracy
+error_rate_train <- mean(round(kknn_train$fit) != train_set$label_value)
+#cat("Misclassification error for training data is: ", error_rate_train, "\n")
+
+kknn_valid <- kknn(label_value ~ .,
+                  train_set,
+                  valid_set,
+                  k = k_value,
+                  kernel = "rectangular",scale = TRUE)
+
+# generate confusion matrix for validate data
+confusion_matrices_valid <- table(round(kknn_valid$fit), valid_set$label_value)
+
+
+# print confusion matrix
+#print(confusion_matrices_valid)
+
+# calculate error rate
+error_rate_valid <- mean(round(kknn_valid$fit) != valid_set$label_value)
+#cat("Misclassification error for valid data is: ", error_rate_valid, "\n")
+
+# misclassification rates
+misclassification_rates_data_1_2 <- data.frame(name=c("Training","Validation"),
+                                               rate=c(error_rate_train,
+                                                      error_rate_valid))
+names(misclassification_rates_data_1_2)[1] <- ""                                                    
+
+# misclassification errors for each digits on training data
+misclassification_rates_for_each_digits_data_1_2 <- data.frame(c(0,9),rate=rep(0,10))
+names(misclassification_rates_for_each_digits_data_1_2)[1] <- ""
+
+for(i in 1:10){
+  misclassification_rates_for_each_digits_data_1_2[i,] <- c(i-1,mean(
+    round(kknn_train$fit) != train_set$label_value & 
+    train_set$label_value==(i-1)))
+}
+
+
+# render result to tables
+
+knitr::kable(confusion_matrices_train, 
+             caption = "Confusion matrix for training data set")
+knitr::kable(confusion_matrices_valid,
+             caption = "Confusion matrix for validation data set")
+knitr::kable(misclassification_rates_data_1_2,
+             caption = "Misclassification rates")
+knitr::kable(misclassification_rates_for_each_digits_data_1_2,
+             caption = "Misclassification rates of digits using learning data set")
 ```
-
-The confusion_matrices is as follows:
-
-|   | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 |
-|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|
-| 0 |98 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
-| 1 | 0 |70 | 0 | 0 | 0 | 0 | 1 | 0 | 0 | 0 |
-| 2 | 1 |26 |87 | 0 | 1 | 0 | 2 | 0 | 1 | 0 |
-| 3 | 0 | 4 |11 |52 | 3 | 0 | 0 | 0 | 1 | 2 |
-| 4 | 0 | 1 | 8 |25 |74 | 3 | 0 | 1 | 2 | 0 |
-| 5 | 0 | 1 | 4 |12 |18 |66 | 1 | 0 | 4 | 2 |
-| 6 | 0 | 0 | 1 | 2 | 6 |19 |80 | 5 |10 | 6 |
-| 7 | 0 | 2 | 1 | 0 | 5 | 4 | 0 |90 |18 |13 |
-| 8 | 0 | 1 | 0 | 0 | 1 | 1 | 0 | 1 |48 |42 |
-| 9 | 0 | 0 | 0 | 1 | 1 | 1 | 0 | 0 | 0 |20 |
-
-As what the data show in the confusion matrix, we can find that the accuracy of number 0,1,2,9 are super high. For most of the numbers, the accuracy are acceptable.And we got a total accuracy rate of 0.7172775, and total error rate is 0.2827225.
 
 ### (3)
 
-We use the following code to generate heatmaps. By show 205 heat images one by 
-one, we found first 2 images(index 18,50) looks like 8, but next 3 images(index 1, 2,55) not like 8 at all.
+By using image function, we generate images on first 64 [8 image] data from learning data set, and we get the following plot.(We use image function instead of heatmap so we can draw more images in one plot)
 
-The image is as follows.The code attached as appendix.
+According to the plot, we can find that image at [3,2] and [5,2] are easy to identify. however, images such as [3,4] [4,2] [4,3] are very hard to figure out the number.
 
 ```{r 1.3,echo = FALSE}
 ######################  Assignment 1.3 #########################################
+
 # Find all the 8 images
-eight_images <- train_set[train_set$label_value == 8, ]
+train_eight <- train_set[train_set[,65]==8, 1:64]
 
-# get the number of 8 images in training data, we got 205 images
-eight_images_number <- nrow(eight_images)
+# draw 64 [8 images]
+par(mfrow = c(8, 8), mar=c(1,1,1,1))
 
-image_number  <- 18
-eight_images_matrix <- matrix(c(as.numeric(eight_images[image_number, 1:64])), ncol = 8)
-heatmap(x = eight_images_matrix, Rowv = NA, Colv = NA)
-
-image_number  <- 50
-eight_images_matrix <- matrix(c(as.numeric(eight_images[image_number, 1:64])), ncol = 8)
-heatmap(x = eight_images_matrix, Rowv = NA, Colv = NA)
-
-image_number  <- 1
-eight_images_matrix <- matrix(c(as.numeric(eight_images[image_number, 1:64])), ncol = 8)
-heatmap(x = eight_images_matrix, Rowv = NA, Colv = NA)
-
-image_number  <- 2
-eight_images_matrix <- matrix(c(as.numeric(eight_images[image_number, 1:64])), ncol = 8)
-heatmap(x = eight_images_matrix, Rowv = NA, Colv = NA)
-
-image_number  <- 55
-eight_images_matrix <- matrix(c(as.numeric(eight_images[image_number, 1:64])), ncol = 8)
-heatmap(x = eight_images_matrix, Rowv = NA, Colv = NA)
+for(i in 1:64){
+  row.id <- i
+  m <- matrix(as.numeric(train_eight[row.id, 1:64]), nrow=8, ncol=8)
+  image(m[,8:1], col=grey(seq(0, 1, length=16)))
+}
 
 ```
 
 ### (4)
 
-We fit the KNN with k = 1 to 30, we plot the error rates as follows, the code is attached in appendix.
+Using similar code as in 1.2, we fit the knn with k = 1 to 30. 
 
-When K increase, the model not become very complex,it seems it does not change a lot when k >= 2
-And according to the graph, we can know that the optimal K is 1.
+When K increase, since all the points are related to more neighbors, we can say that the model become more complex. misclassification rates also increase. And validation data's misclassification rates always greater than train data's misclassification rates.
+
+According to the plot, we know that optimized K = 1 which will generate the smallest misclassification rate.
+
+When K = 1, we training 3 models, we got the following result in table 5.
+We can get the conclusion that the test error rate is higher than the validation error rate.
+Both validation error rate and test error rate are greater than the value we get from the training data set.
 
 ```{r 1.4,echo = FALSE}
 ######################  Assignment 1.4 #########################################
 # calculate error rate for different k values
-error_rates_valid <- rep(0, 30)
+error_rates_train <- c()
+error_rates_valid <- c()
 
 for(k_value in 1:30){
-  # apply kknn function 
-  valid_kknn <- kknn::kknn(label_value ~ .,
-                       train_set,
-                       valid_set,
-                       k = k_value,
-                       kernel = "rectangular")
-
- predict_data_valid <- predict(valid_kknn,newdata=valid_set)
  
-  # generate confusion matrix
- confusion_matrices_valid <- table(round(predict_data_valid), valid_set$label_value) 
+  kknn_train <- kknn(label_value ~ .,
+                           train_set,
+                           train_set,
+                           k = k_value,
+                           kernel = "rectangular",scale = TRUE)
 
- # calculate accuracy
- accuracy_valid <- sum(diag(confusion_matrices_valid)) / sum(confusion_matrices_valid)
+  kknn_valid <- kknn(label_value ~ .,
+                          train_set,
+                          valid_set,
+                          k = k_value,
+                          kernel = "rectangular",scale = TRUE)
+  
+  # train error rate
+  error_rates_train <- append(error_rates_train,
+                        mean(round(predict(kknn_train)) != train_set$label_value))
 
-  # calculate error rate
-  error_rates_valid[k_value] <- 1 - accuracy_valid
- 
+
+  # valid error rate
+  error_rates_valid <- append(error_rates_valid,
+                        mean(round(predict(kknn_valid)) != valid_set$label_value))
+
+  
 }
 
 # plot the error rate graph
 k <- 1:30
 
-error_rate_data <- data.frame(k, error_rates_valid)
-ggplot2::ggplot() +
-  ggplot2::geom_line(error_rate_data,mapping = ggplot2::aes(x=k,y=error_rates_valid)) +  
-  ggplot2::labs(x = "K",y="error rate")
+error_rate_data <- data.frame(k, error_rates_train,error_rates_valid)
+
+ggplot(data = error_rate_data) +
+  geom_line(mapping = aes(x=k,y=error_rates_train,colour="train")) +  
+  geom_line(mapping = aes(x=k,y=error_rates_valid,colour="validation")) +
+  labs(x = "K",y="Misclassification rates") +
+  scale_color_manual(name = "Data set", values = c("train" = "blue", "validation" = "red"))
+
+
+k_value <- 1
+
+kknn_train <- kknn(label_value ~ .,
+                           train_set,
+                           train_set,
+                           k = k_value,
+                           kernel = "rectangular",scale = TRUE)
+
+kknn_valid <- kknn(label_value ~ .,
+                          train_set,
+                          valid_set,
+                          k = k_value,
+                          kernel = "rectangular",scale = TRUE)
+
+kknn_test <- kknn(label_value ~ .,
+                          train_set,
+                          test_set,
+                          k = k_value,
+                          kernel = "rectangular",scale = TRUE)
+  
+# train error rate
+error_rate_train <- mean(round(predict(kknn_train)) != train_set$label_value)
+
+
+# valid error rate
+error_rate_valid <- mean(round(predict(kknn_valid)) != valid_set$label_value)
+
+# test error rate
+error_rate_test <- mean(round(predict(kknn_test)) != test_set$label_value)
+
+data1_4 <- data.frame(c("Training","Validation","Test"),
+                      c(error_rate_train,error_rate_valid,error_rate_test))
+names(data1_4)[1] <- ""
+names(data1_4)[2] <- "Test Error"
+knitr::kable(data1_4,
+             caption = "Misclassification rates of when K=1")
+
 ```
 
 ### (5)
 
-The cross-entropy is defined as $-\sum_{i=1}^{N}\sum_{m=1}^{M}I(Y_{i}=C_{m}) * log\hat{p}(y_{i}=C_{m})$.
+We plot the validation error using the code attached in the appendix, the plot of validation error and K as follows.
 
-So we will calculate it using the following code(Not implemented).
-
-```{r 1.5,echo = FALSE}
-#error_rates_cross <- rep(30, 0)
-
-#for(k_value in 1:30){
-#  # apply kknn function 
-#  train_kknn <- train.kknn(label_value ~ .,
-#                       data = train_set,
-#                       kmax = k_value,
-#                       kernel = "rectangular")
-
-#  predict_data_test <- predict(train_kknn,newdata=test_set)
-  
-#  confusion_matrices_test <- table(round(predict_data_test), test_set$label_value)
-  
-  # calculate cross-entropy
-  #ce <- 0
-  #for(i in 1:10){
-  #  total_count <- sum(confusion_matrices_test[i])
-  #  for(j in 1:10){
-  #    p <- confusion_matrices_test[i,j] / total_count
-  #    print(p)
-  #    ce <- ce + log(p) * confusion_matrices_test[i,j]
-  #    
-  #  }
-  #}
-  #error_rates_cross[k_value] <- ce * (-1)
-#}
-
-#k <- 1:30
-
-#error_rate_data <- data.frame(k,error_rates_cross)
-#ggplot2::ggplot() + 
-#  ggplot2::geom_line(error_rate_data,mapping=ggplot2::aes(x=k,y=error_rates_cross),colour="blue") + 
-#  ggplot2::labs(x = "K",y="error rate")
-
-```
-
+Since when K=2 get the minimal value, so the optimal K = 2.
 
 The reason why we use cross-entropy is more suitable is:
 1) It is sensitive to the predicted probabilities.
 2) In multinomial distribution, the predicted value will more likely to be explained as a probability, and cross-entropy loss function is designed to compare the probability based prediction.
 
 
+```{r 1.5,echo = FALSE}
+######################  Assignment 1.5 #########################################
+# init value
+
+k_values <- 1:30
+epsilon <- 1e-15
+validation_errors <- numeric(length(k_values))
+
+for(k in k_values){
+    kknn_train <- kknn(label_value ~ .,
+                           train_set,
+                           valid_set,
+                           k = k,
+                           kernel = "rectangular",scale = TRUE)
+
+    pred <- round(predict(kknn_train))
+    validation_errors[k] <- -sum(valid_set$label_value * log(pred + epsilon))
+}
+
+error_cross_entropy_data <- data.frame(k_values,validation_errors)
+
+ggplot(data = error_cross_entropy_data) +
+  geom_line(mapping = aes(x=k_values,y=validation_errors))  +
+  labs(x = "K",y="Cross entropy error") 
+```
+
 ## Assignment 2: Linear regression and ridge regressions (Solved by Satya Sai Naga Jaya Koushik Pilla)
 
 ### Answer:
 
 
-```{r setup2, include=FALSE}
+```{r setup2, include=FALSE, eval=FALSE}
 ###########################  Init code For Assignment 2 ########################
 rm(list = ls())
 knitr::opts_chunk$set(echo = TRUE)
@@ -248,7 +306,7 @@ normalize <- function(x) {
 ### (1)
 
 We read the data and divide data into training and test data (60/40) and normalize them.
-```{r 2.1}
+```{r 2.1, eval=FALSE}
 ###########################  Assignment 2.1 ####################################
 # Load the data
 data <- read.csv("parkinsons.csv")
@@ -277,7 +335,7 @@ test_set <- as.data.frame(lapply(test_set, normalize))
 
 We create a linear model using following code, we get the parameters as show below.
 
-```{r 2.2}
+```{r 2.2, eval=FALSE}
 ###########################  Assignment 2.2 ####################################
 # Linear regression model
 
@@ -298,7 +356,7 @@ we know that Shimmer.APQ3 and Shimmer.DDA contribute significantly to the model
 ### (3)
 
 Functions implemented as below.
-```{r 2.3}
+```{r 2.3, eval=FALSE}
 ###########################  Assignment 2.3 ####################################
 # Loglikelihood function
 loglikelihood <- function(theta, sigma) {
@@ -345,7 +403,7 @@ df <- function(X,lambda) {
 ### (4)
 
 Functions implemented as below.
-```{r 2.4}
+```{r 2.4, eval=FALSE}
 ###########################  Assignment 2.4 ####################################
 
 #sigma <- 0.01
@@ -366,7 +424,7 @@ Functions implemented as below.
 
 ### Answer:
 
-```{r setup3, include=FALSE}
+```{r setup3, include=FALSE, eval=FALSE}
 ###########################  Init code For Assignment 3 ########################
 rm(list = ls())
 knitr::opts_chunk$set(echo = TRUE)
@@ -375,7 +433,7 @@ library(ggplot2)
 
 ### (1)
 
-```{r 3.1}
+```{r 3.1, eval=FALSE}
 data <- read.csv("pima-indians-diabetes.csv")
 
 age <- data[, 8]
@@ -408,7 +466,7 @@ Looking at the graph, we notice how the classification is not very accurate. Tho
 catches the fact that people with higher plasma glucose concentration are more 
 commonly diabetic. We obtain a misclassification error = 0.266.
 
-```{r 3.2_3.3}
+```{r 3.2_3.3, eval=FALSE}
 
 model <- glm(diabetes ~ plasma + age, fam = binomial(link="logit"), data = data)
 summary(model)
@@ -434,7 +492,7 @@ and non diabetic into the two cases ( r= 0.2 and r=0.8) has the same slope, but
 different intercept. Both cases are pretty bad predictors as 0.2 and 0.8 are
 respectively too low and too high to get a good classification for our case.
 
-```{r 3.4}
+```{r 3.4, eval=FALSE}
 
 # r = 0.2
 
@@ -463,7 +521,7 @@ analysis, how people with higher plasma glucose concentration are more
 exposed to the risk of having diabete. We also notice how we strangely get a 
 misclassificated predicted value in the bottom right corner of the graph.
 
-```{r 3.5}
+```{r 3.5, eval=FALSE}
 
 # Adding new variables, logit function with r= 0.5
 

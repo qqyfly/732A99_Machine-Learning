@@ -7,9 +7,7 @@ library(kknn)
 # validation and test sets.
 
 # read data
-
 data <- read.csv("./Homework/Lab/Lab1/optdigits.csv")
-
 #data <- read.csv("optdigits.csv")
 row_num <- nrow(data)
 cols_num <- ncol(data)
@@ -18,7 +16,7 @@ cols_num <- ncol(data)
 names(data)[cols_num] <- "label_value"
 
 # set data split ratio to 0.5, 0.25 and 0.25
-ratio <- c(train = .5, test = .25, validate = .25)
+ratio <- c(train = .5, validate = .25, test = .25)
 
 # data pre-processing
 # columns 1-64 are number based and do not need to be normalized, last column
@@ -33,11 +31,11 @@ train_set <- data[train_id, ]
 
 set.seed(12345)
 test_val_id <- setdiff(1:row_num, train_id)
-test_id <- sample(test_val_id, floor(row_num * ratio[2]))
-test_set <- data[test_id, ]
-
-valid_id <- setdiff(test_val_id, test_id)
+valid_id <- sample(test_val_id, floor(row_num * ratio[2]))
 valid_set <- data[valid_id, ]
+
+test_id <- setdiff(test_val_id, valid_id)
+test_set <- data[test_id, ]
 
 ######################  Assignment 1.2 #########################################
 
@@ -70,24 +68,39 @@ valid_set <- data[valid_id, ]
 # Since most of the prediction accuracy rate still acceptable, we got a total
 # accuracy rate of 0.7361257, and total error rate is 0.2638743.
 
-# calculate error rate for k = 30
 k_value <- 30
-fit_kknn <- train::kknn(label_value ~ .,
-                       train_set,
-                       test_set,
-                       k = k_value,
-                       kernel = "rectangular")
+kknn_train <- kknn(label_value ~ .,
+                         train_set,
+                         train_set,
+                         k = k_value,
+                         kernel = "rectangular")
 
-predict_data <- predict(fit_kknn,newdata=test_set)
+# generate confusion matrix for training data
+confusion_matrices_train <- table(round(kknn_train$fit), train_set$label_value)
 
-# generate confusion matrix
-confusion_matrices <- table(round(predict_data), test_set$label_value)
+# print confusion matrix
+print(confusion_matrices_train)
 
-# calculate accuracy
-accuracy <- sum(diag(confusion_matrices)) / sum(confusion_matrices)
 
 # calculate error rate
-error_rate <- 1 - accuracy
+error_rate_train <- mean(round(kknn_train$fit) != train_set$label_value)
+cat("Misclassification error for training data is: ", error_rate_train, "\n")
+
+kknn_test <- kknn(label_value ~ .,
+                  train_set,
+                  test_set,
+                  k = k_value,
+                  kernel = "rectangular")
+
+# generate confusion matrix for training data
+confusion_matrices_test <- table(round(kknn_test$fit), test_set$label_value)
+
+# print confusion matrix
+print(confusion_matrices_test)
+
+# calculate error rate
+error_rate_test <- mean(round(kknn_test$fit) != test_set$label_value)
+cat("Misclassification error for test data is: ", error_rate_test, "\n")
 
 ######################  Assignment 1.3 #########################################
 
