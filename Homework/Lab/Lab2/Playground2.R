@@ -8,8 +8,8 @@ data <- read.csv("./Homework/Lab/Lab2/bank-full.csv")
 row_num <- nrow(data)
 cols_num <- ncol(data)
 
-# set data split ratio to 0.5, 0.3, 0.3
-ratio <- c(train = .5, validate = 0.3, test = .3)
+# set data split ratio to 0.4, 0.3, 0.3
+ratio <- c(train = .4, validate = 0.3, test = .3)
 
 # set random seed
 set.seed(12345)

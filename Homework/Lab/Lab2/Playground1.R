@@ -147,8 +147,6 @@ summary(ridge_reg)
 
 plot(ridge_reg, xvar = "lambda", label = TRUE)
 
-# TODO: compare the models and give conclusions about the two models.
-
 ######################  Assignment 1.5 #########################################
 
 #TODO: Add something here.
