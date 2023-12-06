@@ -41,7 +41,7 @@ test_id <- setdiff(1:row_num, train_id)
 test_set <- data[test_id, ]
 ```
 
-## Assignment 1: Explicit regularization
+## Assignment 1: Explicit regularization(by Qinyuan Qi(qinqi464))
 
 ### Answer:
 ### (1)
@@ -178,7 +178,7 @@ plot(y_test, predictions, pch = 16, col = "red",
 abline(a = 0, b = 1, col = "blue", lty = 2)
 ```
 
-## Assignment 2: Decision trees and logistic regression for bank marketing
+## Assignment 2: Decision trees and logistic regression for bank marketing(by Satya Sai Naga Jaya Koushik	Pilla)
 
 ### Answer:
 
@@ -276,27 +276,107 @@ rpart.plot(tree_c)
 ```
 
 ### (3)
+
 ```{r 2.3}
 ######################  Assignment 2.3 #########################################
+# Set folds number
+num_folds <- 5
+cv_inds <- cut(seq(1, nrow(train_set)), breaks = num_folds, labels = FALSE)
+cv_errors <- numeric(30)
+train_deviances_depth <- numeric(30)
+validation_deviances_depth <- numeric(30)
+
+for (depth in 1:30) {  
+  tree <- rpart(y ~ ., data = train_set, method = "class", 
+  control = rpart.control(cp = 0.0005), maxdepth = depth)
+        
+  validation_predictions <- predict(tree, validation_set, type = "class")
+    
+  cv_errors_depth <- mean(validation_predictions != validation_set$y)
+    
+  cv_errors[depth] <- cv_errors_depth
+
+  train_deviances_depth[depth] <- sum(deviance(tree))
+  validation_deviances_depth[depth] <- sum(deviance(tree, newdata = validation_set))
+}
+
+optimal_depth <- which.min(cv_errors)
+cat("Optimal tree depth:", optimal_depth, "\n")
+
+plot_data <- data.frame(Leaves = 1:30, Train_Deviance = train_deviances_depth, 
+Validation_Deviance = validation_deviances_depth)
+
+ggplot(plot_data, aes(x = Leaves)) +
+  geom_line(aes(y = Train_Deviance, color = "Training Data"), size = 1) +
+  geom_line(aes(y = Validation_Deviance, color = "Validation Data"), size = 1) +
+  labs(title = "Dependence of Deviances vs the Number of Leaves",
+       x = "Number of Leaves",
+       y = "Deviance") +
+  scale_color_manual(values = c("Training Data" = "blue", "Validation Data" = "red"))
 ```
 
 ### (4)
-```{r 2.4}
+An optimized tree depth = 1.
+```{r 2.4.1}
 ######################  Assignment 2.4 #########################################
+final_tree <- rpart(y ~ ., data = train_set, method = "class", 
+control = rpart.control(cp = 0.0005), maxdepth = 1)
+
+```
+
+```{r 2.4.2,eval=FALSE}
+validation_predictions <- predict(final_tree, validation_set, type = "class")
+
+conf_matrix <- confusionMatrix(validation_predictions, validation_set$y)
+
+accuracy <- conf_matrix$overall["Accuracy"]
+f1_score <- conf_matrix$byClass["F1"]
+
+# Print the confusion matrix, accuracy, and F1 score
+cat("Confusion Matrix:\n")
+cat(conf_matrix$table,"\n")
+
+cat("Accuracy:", accuracy, "\n")
+cat("F1 Score:", f1_score, "\n")
 ```
 
 ### (5)
+
 ```{r 2.5}
 ######################  Assignment 2.5 #########################################
+loss_matrix <- matrix(c(0, 1, 5, 0), nrow = 2)
+test_predictions <- predict(final_tree, test_set, type = "class", parms = list(loss = loss_matrix))
+conf_matrix <- table(Actual = test_set$y, Predicted = test_predictions)
+cat("Confusion Matrix:\n")
+print(conf_matrix)
+
 ```
 
 ### (6)
-```{r 2.6}
+```{r 2.6,eval=FALSE}
 ######################  Assignment 2.6 #########################################
+threshold <- 0.05  
+logistic_model <- glm(y ~ ., data = train_set, family = "binomial")
 
+logistic_probabilities <- predict(logistic_model, test_set, type = "response")
+logistic_predictions <- ifelse(logistic_probabilities > threshold, "yes", "no")
+
+conf_matrix_logistic <- confusionMatrix(logistic_predictions, test_set$y)
+
+TP <- conf_matrix_logistic$table["yes", "yes"]
+FN <- conf_matrix_logistic$table["no", "yes"]
+FP <- conf_matrix_logistic$table["yes", "no"]
+TN <- conf_matrix_logistic$table["no", "no"]
+
+TPR <- TP / (TP + FN)
+FPR <- FP / (FP + TN)
+
+# Print the results
+cat("True Positive Rate (TPR):", TPR, "\n")
+cat("False Positive Rate (FPR):", FPR, "\n")
 ```
 
-## Assignment 3. Principal components and implicit regularization
+## Assignment 3. Principal components and implicit regularization(by Daniele	Bozzoli(danbo826))
 
 ### Answer:
 
