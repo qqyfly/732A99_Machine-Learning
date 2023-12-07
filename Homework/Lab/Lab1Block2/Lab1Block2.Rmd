@@ -400,7 +400,7 @@ knitr::opts_chunk$set(echo = TRUE)
 The code implemented and listed as below.
 
 ```{r q2, eval=FALSE}
-
+######################## Assignment 2 MIXTURE MODELS ###########################
 # init data set (copy from pdf file)
 set.seed(1234567890)
 
