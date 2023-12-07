@@ -476,7 +476,9 @@ for(it in 1:max_it) {
 
 
   #Log likelihood computation.
-  llik[it] <- sum(log(apply(x, 1, function(xi) sum(pi * apply(mu, 1, function(mui) prod(mui^xi * (1 - mui)^(1 - xi)))))))
+  llik[it] <- sum(log(apply(x, 1, 
+    function(xi) sum(pi * apply(mu, 1, function(mui) 
+                 prod(mui^xi * (1 - mui)^(1 - xi)))))))
 
   cat("iteration: ", it, "log likelihood: ", llik[it], "\n")
   flush.console()
