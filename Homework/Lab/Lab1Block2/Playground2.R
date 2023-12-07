@@ -1,7 +1,6 @@
 ###########################  Init code #########################################
 rm(list = ls())
 library(randomForest)
-library(ggplot2)
 
 ###############  Assignment 1 Ensemble methods #################################
 
@@ -14,7 +13,7 @@ compare_method2 <- function(x1, x2) {
 }
 
 compare_method3 <- function(x1, x2) {
-  return(x1 > 0.5 & x2 > 0.5)
+  return((x1 > 0.5 & x2 > 0.5) | (x1 < 0.5 & x2 < 0.5))
 }
 
 ensemble_method <- function(record_number, tree_number, node_size, compare_method) {
@@ -38,36 +37,169 @@ ensemble_method <- function(record_number, tree_number, node_size, compare_metho
   misclassification_rate <- sum(as.numeric(rf_pred != trlabels)) /
   length(trlabels)
 
-  cat("The misclassification rate for current tree is: ",
-    misclassification_rate, "\n")
-
-  # TODO: change the method of MSE if necessary
-  mean_error_rate <- mean(rf_model$err.rate[, 1])
-  cat("The mean error rate for current tree is: ", mean_error_rate, "\n")
+  return (misclassification_rate)
 }
 
+################################################################################
 # call the function
 record_numbers <- c(100, 1000)
 tree_numbers <- c(1, 10, 100)
 
 node_size <- 25
 # data record number = 100
-ensemble_method(record_numbers[1], tree_numbers[1], node_size, compare_method1)
-ensemble_method(record_numbers[1], tree_numbers[2], node_size, compare_method1)
-ensemble_method(record_numbers[1], tree_numbers[3], node_size, compare_method1)
+result1 <- ensemble_method(record_numbers[1], tree_numbers[1], node_size, 
+                          compare_method1)
+result2 <- ensemble_method(record_numbers[1], tree_numbers[2], node_size, 
+                          compare_method1)
+result3 <- ensemble_method(record_numbers[1], tree_numbers[3], node_size, 
+                          compare_method1)
 
-# data record number = 1000
-ensemble_method(record_numbers[2], tree_numbers[1], node_size, compare_method2)
-ensemble_method(record_numbers[2], tree_numbers[2], node_size, compare_method2)
-ensemble_method(record_numbers[2], tree_numbers[3], node_size, compare_method2)
+cat("The misclassification rate for 1 tree with record_number=",
+    record_numbers[1], " and node_size=", node_size, " is: ", result1, "\n")
+cat("The misclassification rate for 10 tree with record_number=",
+    record_numbers[1], " and node_size=", node_size, " is: ", result2, "\n")
+cat("The misclassification rate for 100 tree with record_number=",
+    record_numbers[1], " and node_size=", node_size, " is: ", result3, "\n")
+################################################################################
+
+misclassification_rates_1 <- rep(0, 1000)
+misclassification_rates_10 <- rep(0, 1000)
+misclassification_rates_100 <- rep(0, 1000)
+
+# data record number = 100
+for (i in 1:1000) {
+
+  # data record number = 100
+  misclassification_rates_1[i] <- ensemble_method(record_numbers[1], 
+                                                 tree_numbers[1], node_size, 
+                                                 compare_method1)
+  misclassification_rates_10[i] <- ensemble_method(record_numbers[1], 
+                                                  tree_numbers[2], node_size, 
+                                                  compare_method1)
+  misclassification_rates_100[i] <- ensemble_method(record_numbers[1], 
+                                                   tree_numbers[3], node_size, 
+                                                   compare_method1)
+}
+
+cat("The mean of misclassification rate for 1 tree with record_number=",
+    record_numbers[1], " and node_size=", node_size, " is: ", 
+    mean(misclassification_rates_1), "\n")
+
+cat("The mean of misclassification rate for 10 tree with record_number=",
+    record_numbers[1], " and node_size=", node_size, " is: ", 
+    mean(misclassification_rates_10), "\n")
+
+cat("The mean of misclassification rate for 100 tree with record_number=",
+    record_numbers[1], " and node_size=", node_size, " is: ", 
+    mean(misclassification_rates_100), "\n")
+
+cat("The var of misclassification rate for 1 tree with record_number=",
+    record_numbers[1], " and node_size=", node_size, " is: ", 
+    var(misclassification_rates_1), "\n")
+
+cat("The var of misclassification rate for 10 tree with record_number=",
+    record_numbers[1], " and node_size=", node_size, " is: ", 
+    var(misclassification_rates_10), "\n")
+
+cat("The var of misclassification rate for 100 tree with record_number=",
+    record_numbers[1], " and node_size=", node_size, " is: ", 
+    var(misclassification_rates_100), "\n")
+################################################################################
+
+misclassification_rates_1 <- rep(0, 1000)
+misclassification_rates_10 <- rep(0, 1000)
+misclassification_rates_100 <- rep(0, 1000)
+
+# data record number = 100
+for (i in 1:1000) {
+
+  # data record number = 100
+  misclassification_rates_1[i] <- ensemble_method(record_numbers[1], 
+                                                 tree_numbers[1], node_size, 
+                                                 compare_method2)
+  misclassification_rates_10[i] <- ensemble_method(record_numbers[1], 
+                                                  tree_numbers[2], node_size, 
+                                                  compare_method2)
+  misclassification_rates_100[i] <- ensemble_method(record_numbers[1], 
+                                                   tree_numbers[3], node_size, 
+                                                   compare_method2)
+}
+
+cat("The mean of misclassification rate for 1 tree with record_number=",
+    record_numbers[1], " and node_size=", node_size, " is: ", 
+    mean(misclassification_rates_1), "\n")
+
+cat("The mean of misclassification rate for 10 tree with record_number=",
+    record_numbers[1], " and node_size=", node_size, " is: ", 
+    mean(misclassification_rates_10), "\n")
+
+cat("The mean of misclassification rate for 100 tree with record_number=",
+    record_numbers[1], " and node_size=", node_size, " is: ", 
+    mean(misclassification_rates_100), "\n")
+
+cat("The var of misclassification rate for 1 tree with record_number=",
+    record_numbers[1], " and node_size=", node_size, " is: ", 
+    var(misclassification_rates_1), "\n")
+
+cat("The var of misclassification rate for 10 tree with record_number=",
+    record_numbers[1], " and node_size=", node_size, " is: ", 
+    var(misclassification_rates_10), "\n")
+
+cat("The var of misclassification rate for 100 tree with record_number=",
+    record_numbers[1], " and node_size=", node_size, " is: ", 
+    var(misclassification_rates_100), "\n")
+
+################################################################################
+
+misclassification_rates_1 <- rep(0, 1000)
+misclassification_rates_10 <- rep(0, 1000)
+misclassification_rates_100 <- rep(0, 1000)
 
 node_size <- 12
-ensemble_method(record_numbers[2], tree_numbers[1], node_size, compare_method3)
-ensemble_method(record_numbers[2], tree_numbers[2], node_size, compare_method3)
-ensemble_method(record_numbers[2], tree_numbers[3], node_size, compare_method3)
+# data record number = 100
+for (i in 1:1000) {
 
-# comment on the results
-# 
+  # data record number = 100
+  misclassification_rates_1[i] <- ensemble_method(record_numbers[1], 
+                                                 tree_numbers[1], node_size, 
+                                                 compare_method3)
+  misclassification_rates_10[i] <- ensemble_method(record_numbers[1], 
+                                                  tree_numbers[2], node_size, 
+                                                  compare_metho3)
+  misclassification_rates_100[i] <- ensemble_method(record_numbers[1], 
+                                                   tree_numbers[3], node_size, 
+                                                   compare_method3)
+}
+
+cat("The mean of misclassification rate for 1 tree with record_number=",
+    record_numbers[1], " and node_size=", node_size, " is: ", 
+    mean(misclassification_rates_1), "\n")
+
+cat("The mean of misclassification rate for 10 tree with record_number=",
+    record_numbers[1], " and node_size=", node_size, " is: ", 
+    mean(misclassification_rates_10), "\n")
+
+cat("The mean of misclassification rate for 100 tree with record_number=",
+    record_numbers[1], " and node_size=", node_size, " is: ", 
+    mean(misclassification_rates_100), "\n")
+
+cat("The var of misclassification rate for 1 tree with record_number=",
+    record_numbers[1], " and node_size=", node_size, " is: ", 
+    var(misclassification_rates_1), "\n")
+
+cat("The var of misclassification rate for 10 tree with record_number=",
+    record_numbers[1], " and node_size=", node_size, " is: ", 
+    var(misclassification_rates_10), "\n")
+
+cat("The var of misclassification rate for 100 tree with record_number=",
+    record_numbers[1], " and node_size=", node_size, " is: ", 
+    var(misclassification_rates_100), "\n")
+
+################################################################################
+
+
+
+
 
 ###############  Assignment 2 MIXTURE MODELS ###################################
 
@@ -140,7 +272,6 @@ for(it in 1:max_it) {
   #Sys.sleep(2)
 
   # E-step: Computation of the weights
-  # TODO:Your code here
   for (i in 1:n) {
     for (m in 1:M) {
       w[i, m] <- pi[m] * prod(mu[m,]^x[i,] * (1 - mu[m,])^(1 - x[i,]))
@@ -150,21 +281,18 @@ for(it in 1:max_it) {
 
 
   #Log likelihood computation.
-  #TODO: Your code here
   llik[it] <- sum(log(apply(w, 1, function(row) sum(row * pi))))
 
   cat("iteration: ", it, "log likelihood: ", llik[it], "\n")
   flush.console()
 
   # Stop if the lok likelihood has not changed significantly
-  # TODO:Your code here
   if (it > 1 && abs(llik[it] - llik[it - 1]) < min_change) {
     cat("Converged.\n")
     break
   }
 
   #M-step: ML parameter estimation from the data and weights
-  # TODO:Your code here
   for (m in 1:M) {
     pi[m] <- sum(w[, m]) / n
     mu[m, ] <- colSums(x * w[, m]) / sum(w[, m])

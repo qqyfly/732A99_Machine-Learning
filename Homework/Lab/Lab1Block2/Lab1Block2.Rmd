@@ -1,0 +1,408 @@
+---
+title: "Machine Learning Computer Lab 1 Block2 (Group A7)"
+author: 
+  - Qinyuan Qi(qinqi464)
+  - Satya Sai Naga Jaya Koushik	Pilla (satpi345)
+  - Daniele	Bozzoli(danbo826)  
+date: "`r Sys.Date()`"
+output: pdf_document
+---
+
+## Assignment 1: ENSEMBLE METHODS
+
+### Answer:
+
+```{r setup1, include=FALSE}
+###########################  Init code For Assignment 1 ########################
+rm(list = ls())
+knitr::opts_chunk$set(echo = TRUE)
+library(randomForest)
+set.seed(1234)
+```
+Following is the functions for the assignments.
+
+```{r 1.1}
+###############  Assignment 1 Ensemble methods #################################
+
+compare_method1 <- function(x1, x2) {
+  return(x1 < x2)
+}
+
+compare_method2 <- function(x1, x2) {
+  return(x1 < 0.5)
+}
+
+compare_method3 <- function(x1, x2) {
+  return((x1 > 0.5 & x2 > 0.5) | (x1 < 0.5 & x2 < 0.5))
+}
+
+ensemble_method <- function(record_number, tree_number, node_size, compare_method) {
+  # init data set (copy from pdf file)
+
+
+  x1 <- runif(record_number)
+  x2 <- runif(record_number)
+  trdata <- cbind(x1, x2)
+  y <- as.numeric(compare_method(x1, x2))
+  trlabels <- as.factor(y)
+  #plot(x1, x2, col = (y + 1))
+
+  # training the model using random forest
+  rf_model <- randomForest(trdata, trlabels, ntree = tree_number,
+                          nodesize = node_size, keep.forest = TRUE)
+
+  rf_pred <- predict(rf_model, newdata = trdata, class = "classification")
+
+  # calculate the misclassification rate
+  misclassification_rate <- sum(as.numeric(rf_pred != trlabels)) /
+  length(trlabels)
+
+  return (misclassification_rate)
+}
+
+```
+
+When node_size = 25 and record_numbers = 100 , and check x1 < x2 , we get the following result.
+
+```{r 1.2,echo = FALSE}
+
+################################################################################
+# call the function
+record_numbers <- c(100, 1000)
+tree_numbers <- c(1, 10, 100)
+
+node_size <- 25
+# data record number = 100
+result1 <- ensemble_method(record_numbers[1], tree_numbers[1], node_size, 
+                          compare_method1)
+result2 <- ensemble_method(record_numbers[1], tree_numbers[2], node_size, 
+                          compare_method1)
+result3 <- ensemble_method(record_numbers[1], tree_numbers[3], node_size, 
+                          compare_method1)
+
+cat("The misclassification rate for 1 tree is: ", result1, "\n")
+cat("The misclassification rate for 10 tree is: ", result2, "\n")
+cat("The misclassification rate for 100 tree is: ", result3, "\n")
+
+```
+
+When we set node_size = 25 and record_numbers = 100 and 1000 and check x1 < x2 , and run 
+it 1000 times, we get the following result.
+
+
+```{r 1.3,echo = FALSE}
+################################################################################
+# When we set node_size = 25 and record_numbers = 100 and 1000 and check x1 < x2 ,
+# and run it 1000 times
+
+misclassification_rates_1.1 <- rep(0, 1000)
+misclassification_rates_10.1 <- rep(0, 1000)
+misclassification_rates_100.1 <- rep(0, 1000)
+
+misclassification_rates_1.2 <- rep(0, 1000)
+misclassification_rates_10.2 <- rep(0, 1000)
+misclassification_rates_100.2 <- rep(0, 1000)
+
+node_size = 25
+for (i in 1:1000) {
+
+  # data record number = 100
+  misclassification_rates_1.1[i] <- ensemble_method(record_numbers[1], 
+                                                 tree_numbers[1], node_size, 
+                                                 compare_method1)
+  misclassification_rates_10.1[i] <- ensemble_method(record_numbers[1], 
+                                                  tree_numbers[2], node_size, 
+                                                  compare_method1)
+  misclassification_rates_100.1[i] <- ensemble_method(record_numbers[1], 
+                                                   tree_numbers[3], node_size, 
+                                                compare_method1)
+  # data record number = 1000
+  misclassification_rates_1.2[i] <- ensemble_method(record_numbers[2], 
+                                                 tree_numbers[1], node_size, 
+                                                 compare_method1)
+  misclassification_rates_10.2[i] <- ensemble_method(record_numbers[2], 
+                                                  tree_numbers[2], node_size, 
+                                                  compare_method1)
+  misclassification_rates_100.2[i] <- ensemble_method(record_numbers[2], 
+                                                   tree_numbers[3], node_size, 
+                                                compare_method1)
+}
+
+cat("The mean of misclassification rate for 1 tree with record number = 100 is: ", 
+    mean(misclassification_rates_1.1), "\n")
+
+cat("The mean of misclassification rate for 10 tree with record number = 100 is: ", 
+    mean(misclassification_rates_10.1), "\n")
+
+cat("The mean of misclassification rate for 100 tree with record number = 100 is: ", 
+    mean(misclassification_rates_100.1), "\n")
+
+cat("The var of misclassification rate for 1 tree with record number = 100 is: ", 
+    var(misclassification_rates_1.1), "\n")
+
+cat("The var of misclassification rate for 10 tree with record number = 100 is: ", 
+    var(misclassification_rates_10.1), "\n")
+
+cat("The var of misclassification rate for 100 tree with record number = 100 is: ", 
+    var(misclassification_rates_100.1), "\n")
+
+
+cat("The mean of misclassification rate for 1 tree with record number = 1000 is: ", 
+    mean(misclassification_rates_1.2), "\n")
+
+cat("The mean of misclassification rate for 10 tree with record number = 1000 is: ", 
+    mean(misclassification_rates_10.2), "\n")
+
+cat("The mean of misclassification rate for 100 tree with record number = 1000 is: ", 
+    mean(misclassification_rates_100.2), "\n")
+
+cat("The var of misclassification rate for 1 tree with record number = 1000 is: ", 
+    var(misclassification_rates_1.2), "\n")
+
+cat("The var of misclassification rate for 10 tree with record number = 1000 is: ", 
+    var(misclassification_rates_10.2), "\n")
+
+cat("The var of misclassification rate for 100 tree with record number = 1000 is: ", 
+    var(misclassification_rates_100.2), "\n")
+```
+
+When we set node_size = 25 and record_numbers = 100 and 1000 and check x1 < 0.5 ,
+ and run it 1000 times, we get the following result.
+
+```{r 1.4,echo = FALSE}
+################################################################################
+
+misclassification_rates_1.1 <- rep(0, 1000)
+misclassification_rates_10.1 <- rep(0, 1000)
+misclassification_rates_100.1 <- rep(0, 1000)
+
+misclassification_rates_1.2 <- rep(0, 1000)
+misclassification_rates_10.2 <- rep(0, 1000)
+misclassification_rates_100.2 <- rep(0, 1000)
+
+
+for (i in 1:1000) {
+
+  # data record number = 100
+  misclassification_rates_1.1[i] <- ensemble_method(record_numbers[1], 
+                                                 tree_numbers[1], node_size, 
+                                                 compare_method2)
+  misclassification_rates_10.1[i] <- ensemble_method(record_numbers[1], 
+                                                  tree_numbers[2], node_size, 
+                                                  compare_method2)
+  misclassification_rates_100.1[i] <- ensemble_method(record_numbers[1], 
+                                                   tree_numbers[3], node_size, 
+                                                   compare_method2)
+  # data record number = 1000
+  misclassification_rates_1.2[i] <- ensemble_method(record_numbers[2], 
+                                                 tree_numbers[1], node_size, 
+                                                 compare_method2)
+  misclassification_rates_10.2[i] <- ensemble_method(record_numbers[2], 
+                                                  tree_numbers[2], node_size, 
+                                                  compare_method2)
+  misclassification_rates_100.2[i] <- ensemble_method(record_numbers[2], 
+                                                   tree_numbers[3], node_size, 
+                                                   compare_method2)
+  
+}
+
+cat("The mean of misclassification rate for 1 tree with record number = 100 is: ", 
+    mean(misclassification_rates_1.1), "\n")
+
+cat("The mean of misclassification rate for 10 tree with record number = 100 is: ", 
+    mean(misclassification_rates_10.1), "\n")
+
+cat("The mean of misclassification rate for 100 tree with record number = 100 is: ", 
+    mean(misclassification_rates_100.1), "\n")
+
+cat("The var of misclassification rate for 1 tree with record number = 100 is: ", 
+    var(misclassification_rates_1.1), "\n")
+
+cat("The var of misclassification rate for 10 tree with record number = 100 is: ", 
+    var(misclassification_rates_10.1), "\n")
+
+cat("The var of misclassification rate for 100 tree with record number = 100 is: ", 
+    var(misclassification_rates_100.1), "\n")
+
+
+
+cat("The mean of misclassification rate for 1 tree with record number = 1000 is: ", 
+    mean(misclassification_rates_1.2), "\n")
+
+cat("The mean of misclassification rate for 10 tree with record number = 1000 is: ", 
+    mean(misclassification_rates_10.2), "\n")
+
+cat("The mean of misclassification rate for 100 tree with record number = 1000 is: ", 
+    mean(misclassification_rates_100.2), "\n")
+
+cat("The var of misclassification rate for 1 tree with record number = 1000 is: ", 
+    var(misclassification_rates_1.2), "\n")
+
+cat("The var of misclassification rate for 10 tree with record number = 1000 is: ", 
+    var(misclassification_rates_10.2), "\n")
+
+cat("The var of misclassification rate for 100 tree with record number = 1000 is: ", 
+    var(misclassification_rates_100.2), "\n")    
+
+```
+When we set node_size = 25 and record_numbers = 100 and 1000 and check ((x1 > 0.5 & x2 > 0.5) | (x1 < 0.5 & x2 < 0.5)) , and run  it 1000 times, we get the following result.
+
+```{r 1.5,echo = FALSE}
+################################################################################
+# When we set node_size = 25 and record_numbers = 100 and check 
+#((x1 > 0.5 & x2 > 0.5) | (x1 < 0.5 & x2 < 0.5)) , and run  it 1000 times
+
+misclassification_rates_1.1 <- rep(0, 1000)
+misclassification_rates_10.1 <- rep(0, 1000)
+misclassification_rates_100.1 <- rep(0, 1000)
+
+misclassification_rates_1.2 <- rep(0, 1000)
+misclassification_rates_10.2 <- rep(0, 1000)
+misclassification_rates_100.2 <- rep(0, 1000)
+
+node_size <- 12
+# data record number = 100
+for (i in 1:1000) {
+
+  # data record number = 100
+  misclassification_rates_1.1[i] <- ensemble_method(record_numbers[1], 
+                                                 tree_numbers[1], node_size, 
+                                                 compare_method3)
+  misclassification_rates_10.1[i] <- ensemble_method(record_numbers[1], 
+                                                  tree_numbers[2], node_size, 
+                                                  compare_method3)
+  misclassification_rates_100.1[i] <- ensemble_method(record_numbers[1], 
+                                                   tree_numbers[3], node_size, 
+                                                   compare_method3)
+
+  # data record number = 1000
+  misclassification_rates_1.2[i] <- ensemble_method(record_numbers[2], 
+                                                 tree_numbers[1], node_size, 
+                                                 compare_method3)
+  misclassification_rates_10.2[i] <- ensemble_method(record_numbers[2], 
+                                                  tree_numbers[2], node_size, 
+                                                  compare_method3)
+  misclassification_rates_100.2[i] <- ensemble_method(record_numbers[2], 
+                                                   tree_numbers[3], node_size, 
+                                                   compare_method3)
+}
+
+cat("The mean of misclassification rate for 1 tree with record number = 100 is: ", 
+    mean(misclassification_rates_1.1), "\n")
+
+cat("The mean of misclassification rate for 10 tree with record number = 100 is: ", 
+    mean(misclassification_rates_10.1), "\n")
+
+cat("The mean of misclassification rate for 100 tree with record number = 100 is: ", 
+    mean(misclassification_rates_100.1), "\n")
+
+cat("The var of misclassification rate for 1 tree with record number = 100 is: ", 
+    var(misclassification_rates_1.1), "\n")
+
+cat("The var of misclassification rate for 10 tree with record number = 100 is: ", 
+    var(misclassification_rates_10.1), "\n")
+
+cat("The var of misclassification rate for 100 tree with record number = 100 is: ", 
+    var(misclassification_rates_100.1), "\n")
+
+
+
+cat("The mean of misclassification rate for 1 tree with record number = 1000 is: ", 
+    mean(misclassification_rates_1.2), "\n")
+
+cat("The mean of misclassification rate for 10 tree with record number = 1000 is: ", 
+    mean(misclassification_rates_10.2), "\n")
+
+cat("The mean of misclassification rate for 100 tree with record number = 1000 is: ", 
+    mean(misclassification_rates_100.2), "\n")
+
+cat("The var of misclassification rate for 1 tree with record number = 1000 is: ", 
+    var(misclassification_rates_1.2), "\n")
+
+cat("The var of misclassification rate for 10 tree with record number = 1000 is: ", 
+    var(misclassification_rates_10.2), "\n")
+
+cat("The var of misclassification rate for 100 tree with record number = 1000 is: ", 
+    var(misclassification_rates_100.2), "\n")
+
+################################################################################
+
+```
+Using the results generated by code, we have the following data.
+Each row has 3 numbers, which is the value for 1,10,100 trees respectively.
+
+mean of 100 size(Method1)
+
+0.15479/0.07448/0.0473
+
+var of 100 size(Method1)
+
+0.003607563/0.001012943/0.0006695796
+
+mean of 1000 size(Method1)
+
+0.047593/0.014158/0.00654
+
+var of 1000 size(Method1)
+
+0.0001721915/2.100204e-05/8.570971e-06
+
+mean of 100 size(Method2)
+
+0.06218/0.00426/0.00017
+
+var of 100 size(Method2)
+
+0.01056021/0.0001467992/4.875976e-06
+
+mean of 1000 size(Method2)
+
+0.005881/9.5e-05/0
+
+var of 1000 size(Method2)
+
+0.0001275724/1.881632e-07/0
+
+mean of 100 size(Method3)
+
+0.15206/0.03319/0.00708
+
+var of 100 size(Method3)
+
+0.007047204/0.0006103342/9.236597e-05
+
+mean of 1000 size(Method3)
+
+0.018026/0.000471/1.1e-05
+
+var of 1000 size(Method3)
+
+0.0001785078/6.958549e-07/1.088989e-08
+
+According to the result, we can found that with the number of trees in the
+random forest grow, the mean value of classification will decrease most of the time.
+This is mainly because of the we get more random trees and we will get a better result. This is also because of more trees will help to increase the robustness of the noisy data and increase stability.
+
+For the 3rd data set, since it's more complicated, but with more trees, the mean
+of the mis classification rate drop dramatically with number of trees grow. It 
+seems that with more complicated dataset, increase the size of trees will get 
+more performance improvement than the relative simple data set. 
+
+## Assignment 2: MIXTURE MODELS
+
+### Answer:
+
+```{r setup2, include=FALSE}
+###########################  Init code For Assignment 2 ########################
+rm(list = ls())
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+
+
+\newpage
+# Appendix: All code for this report
+
+```{r ref.label=knitr::all_labels(), echo=TRUE, eval=FALSE}
+```
