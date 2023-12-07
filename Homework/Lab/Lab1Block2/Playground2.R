@@ -274,28 +274,27 @@ for(it in 1:max_it) {
   # E-step: Computation of the weights
   for (i in 1:n) {
     for (m in 1:M) {
-      w[i, m] <- pi[m] * prod(mu[m,]^x[i,] * (1 - mu[m,])^(1 - x[i,]))
+      w[i, m] <- pi[m] * prod((mu[m,] ^ x[i,]) * ((1 - mu[m,]) ^ (1 - x[i,])))
     }
     w[i,] <- w[i,] / sum(w[i,])
   }
 
 
   #Log likelihood computation.
-  llik[it] <- sum(log(apply(w, 1, function(row) sum(row * pi))))
+  llik[it] <- sum(log(apply(x, 1, function(xi) sum(pi * apply(mu, 1, function(mui) prod(mui^xi * (1 - mui)^(1 - xi)))))))
 
   cat("iteration: ", it, "log likelihood: ", llik[it], "\n")
   flush.console()
 
   # Stop if the lok likelihood has not changed significantly
   if (it > 1 && abs(llik[it] - llik[it - 1]) < min_change) {
-    cat("Converged.\n")
     break
   }
 
   #M-step: ML parameter estimation from the data and weights
   for (m in 1:M) {
     pi[m] <- sum(w[, m]) / n
-    mu[m, ] <- colSums(x * w[, m]) / sum(w[, m])
+    mu[m,] <- colSums(x * w[, m]) / (sum(w[, m]) * D)
   }
 }
 
