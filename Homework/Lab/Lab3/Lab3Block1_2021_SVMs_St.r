@@ -51,6 +51,9 @@ err3
 
 # 1. Which filter do we return to the user ? filter0, filter1, filter2 or filter3? Why?
 
+# 3nd one because it's error is only  0.02122347, and other 2 values are
+# 0.0675, 0.08489388
+
 # 2. What is the estimate of the generalization error of the filter returned to the user? err0, err1, err2 or err3? Why?
 
 # 3. Implementation of SVM predictions.
@@ -68,3 +71,6 @@ for(i in 1:10){ # We produce predictions for just the first 10 points in the dat
 }
 k
 predict(filter3,spam[1:10,-58], type = "decision")
+
+
+
