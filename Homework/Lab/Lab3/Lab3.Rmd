@@ -1,0 +1,50 @@
+---
+title: "Machine Learning Computer Lab 1 Block2 (Group A7)"
+author: 
+  - Qinyuan Qi(qinqi464)
+  - Satya Sai Naga Jaya Koushik	Pilla (satpi345)
+  - Daniele	Bozzoli(danbo826)  
+date: "`r Sys.Date()`"
+output: pdf_document
+---
+
+## Assignment 1: KERNEL METHODS
+
+### Answer:
+
+```{r setup1, include=FALSE}
+###########################  Init code For Assignment 1 ########################
+rm(list = ls())
+knitr::opts_chunk$set(echo = TRUE)
+library(geosphere)
+```
+
+
+## Assignment 2: SUPPORT VECTOR MACHINES
+
+### Answer:
+
+```{r setup2, include=FALSE}
+###########################  Init code For Assignment 2 ########################
+rm(list = ls())
+knitr::opts_chunk$set(echo = TRUE)
+library(kernlab)
+```
+
+## Assignment 3: NEURAL NETWORKS
+
+### Answer:
+
+```{r setup3, include=FALSE}
+###########################  Init code For Assignment 3 ########################
+rm(list = ls())
+knitr::opts_chunk$set(echo = TRUE)
+library(neuralnet)
+```
+
+
+\newpage
+# Appendix: All code for this report
+
+```{r ref.label=knitr::all_labels(), echo=TRUE, eval=FALSE}
+```
