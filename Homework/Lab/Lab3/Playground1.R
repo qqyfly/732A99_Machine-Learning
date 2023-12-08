@@ -58,4 +58,5 @@ plot(temp, type="o")
 # get a test point or data , and calc the distance between the test point and
 # all the training data(kernel mapping),
 # and then get the normalized weight of each training data, and then prod the 
-# the test data and the weight, and this is the prediction of the test data. 
+# the test data and the weight, and this is the prediction of the test data.
+# dont need SVM here. 
