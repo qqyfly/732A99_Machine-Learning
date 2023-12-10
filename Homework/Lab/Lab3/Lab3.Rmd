@@ -5,20 +5,23 @@ author:
   - Satya Sai Naga Jaya Koushik	Pilla (satpi345)
   - Daniele	Bozzoli(danbo826)  
 date: "`r Sys.Date()`"
-output: pdf_document
+output: 
+    pdf_document:
+        toc: true
+        highlight: tango
 ---
 
 ## Assignment 1: KERNEL METHODS
 
 ### Answer:
 
-```{r setup1, include=FALSE}
+```{r setup1, include=FALSE, cache=TRUE,collapse = TRUE}
 ###########################  Init code For Assignment 1 ########################
 rm(list = ls())
 knitr::opts_chunk$set(echo = TRUE)
 library(geosphere)
+c <- 1
 ```
-
 
 ## Assignment 2: SUPPORT VECTOR MACHINES
 
@@ -44,7 +47,7 @@ library(neuralnet)
 
 
 \newpage
-# Appendix: All code for this report
+## Appendix: All code for this report
 
 ```{r ref.label=knitr::all_labels(), echo=TRUE, eval=FALSE}
 ```
