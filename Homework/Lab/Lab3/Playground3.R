@@ -26,4 +26,33 @@ points(te[,1], predict(nn,te), col="red", cex=1)
 
 ## 3.2
 
+# linear activation function
+
+lin_nn <- neuralnet(data=tr, formula = Sin ~ Var, hidden = c(10), 
+                    act.fct = function(x) {x})
+# ReLU activation function ## NOT WORKING
+
+ReLU_nn <- neuralnet(data = tr, formula = Sin ~ Var, hidden = c(10),
+                     act.fct = function(x) {max(0,x)})
+# softplus activation function
+
+softplus_nn <- neuralnet(data = tr, formula = Sin ~ Var, hidden = c(10),
+                         act.fct = function(x) {log(1 + exp(x))})
+
+plot(tr, cex=1)
+points(te, col = "blue", cex=1)
+points(te[,1], predict(lin_nn,te), col="red", cex=1)
+points(te[,1], predict(softplus_nn,te), col="yellow", cex=1)
+
+# ANSWER: For some reasons the ReLU activation function does not seem to work (
+# will wait for feedback), while the other two functions give different results.
+# The linear activation function produces poor predictions, while the softplus
+# produces optimal predicted values.
+
+## 3.3
+
+
+
+
+
 
