@@ -46,7 +46,7 @@ library(neuralnet)
 ```
 
 
-\newpage
+\eewpage
 ## Appendix: All code for this report
 
 ```{r ref.label=knitr::all_labels(), echo=TRUE, eval=FALSE}
