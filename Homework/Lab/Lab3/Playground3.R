@@ -56,3 +56,4 @@ points(te[,1], predict(softplus_nn,te), col="yellow", cex=1)
 
 
 
+
