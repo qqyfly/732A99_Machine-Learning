@@ -9,9 +9,11 @@ output:
     pdf_document
 ---
 
-## Assignment 1: KERNEL METHODS
+## Assignment 1: KERNEL METHODS(Solved by Qinyuan Qi)
 
 ### Answer:
+
+In this assignment, we will try to predict the temp of Linköping station on date 1970-11-05.
 
 ```{r setup1, include=FALSE}
 ###########################  Init code For Assignment 1 ########################
@@ -27,28 +29,35 @@ stations <- read.csv("stations.csv", fileEncoding = "latin1")
 temps <- read.csv("temps50k.csv")
 st <- merge(stations, temps, by = "station_number")
 
+# define date of interest
+date_interest <- as.Date("1970-11-05")
+
+# filter out data which is later than data of interest 
+st$date <- as.Date(st$date)
+old_sf <- st #for later use
+st <- st[-which(difftime(date_interest, st$date) <= 0),]
+
+# define station of interest to Linköping
+station_row <- which(stations$station_name == "Linköping") 
+station <- stations$station_name[station_row] 
+
 # split the data to train and test (70/30)
 n <- dim(st)[1]
 id <- sample(1:n, floor(n * 0.7))
 train <- st[id, ]
 test <- st[-id, ]
-
 ```
 
-The kernel functions are implemented as follows.
+The 3 basic kernel functions are implemented as follows.
 
 ```{r 1.0}
 ######################### Kernel Code  #####################################
 # Gaussian kernel of geo distance
 geo_distance <- function(data, location_interest, h_dist) {
-
   location <- data.frame(longitude = data$longitude,
                          latitude  = data$latitude)
-
   distances <- distHaversine(location_interest,location)
-
   kernel_result <- exp(-(distances)^2 / (2 * h_dist^2))
-
   return(c(distances, kernel_result))
 }
 
@@ -56,33 +65,33 @@ geo_distance <- function(data, location_interest, h_dist) {
 day_distance <- function(data, day_interest, h_day) {
   distances <- as.numeric(difftime(day_interest,data, 
                           units = "days"))
-
   kernel_result <- exp(-(distances)^2 / (2 * h_day^2))
   return(c(distances, kernel_result))
 }
 
 # Gaussian kernel of hour distance
 hour_distance <- function(data, hour_interest, h_hour) {
-  distances <- as.numeric(difftime(strptime(hour_interest, "%H:%M:%S"),
-                              strptime(data$time, "%H:%M:%S"),
-                              units = "hours"))
+  
+  diff <- sapply(1:length(hour_interest), function(x){
+              abs(as.numeric(difftime(strptime(hour_interest[x], "%H:%M:%S"), 
+                                      strptime(data$time, "%H:%M:%S")), units="hours"))
+  })
+  
+  distances <- ifelse(diff <= 12, diff, 24-diff)
   kernel_result <- exp(-(distances)^2 / (2 * h_day^2))
-  return(c(distances, kernel_result))
+  return(kernel_result)
 }
 ```
 
-We set h_distance=250000,and set station to Linköping, then we plot the kernel function as follows
+We set h_distance=100000, and set station to Linköping, then we plot the kernel function  for distance as follows.
 
-```{r 1.1, echo=FALSE}
+```{r 1.1}
 ################################ 1.1 Distance Kernel ###########################
-# Station Name to Linköping 
-station_row <- which(stations$station_name == "Linköping") 
-station <- stations$station_name[station_row] 
 
 # These three values are up to the students
-h_distance <- 250000
+h_distance <- 100000
 
-# set coordinates to predict
+# set coordinates to predict(Linköping)
 a <- stations$longitude[station_row]
 b <- stations$latitude[station_row]
 
@@ -92,48 +101,62 @@ k_distance <- sapply(i, function(i){geo_distance(train[i, ], c(a, b), h_distance
 plot(k_distance[1,], k_distance[2,], main = "Distance Gaussian Kernel", xlab = "Distance", ylab = "K")
 ```
 
-We set h_day=6000, and set date to 2016-12-26, we also filter the data after 2016-12-26,
-then we plot the kernel function as follows.
+We set h_day=20, then we plot the kernel function as follows.
 
-```{r 1.2, echo=FALSE}
+```{r 1.2}
 ################################ 1.2 Day Kernel ###############################
-h_day <- 6000
-date_interest <- as.POSIXlt("2016-12-26")
-train_filtered <- train[train$date < date_interest, ]
-k_day <- sapply(i, function(i) day_distance(as.POSIXlt(train_filtered$date[i]), date_interest, h_day))
+h_day <- 20
+k_day <- sapply(i, function(i) day_distance(as.Date(train$date[i]), date_interest, h_day))
 plot(k_day[1,], k_day[2,], main = "Day Gaussian Kernel", xlab = "Days", ylab = "K")
-
 ```
 
-We set h_hour = 7, and time to 18:00, also filter the time after the specified time,
-then we plot the kernel function as follows.
+We set h_hour = 7.
 
-```{r 1.3, echo=FALSE}
+```{r 1.3}
 ################################ 1.3 Hour Kernel ###############################
-times_interest <- "18:00:00"
 
 h_hour <- 7
-train_filtered <- train[train$time < times_interest, ]
-k_hour <- sapply(i, function(i) hour_distance(train_filtered[i,], times_interest, h_hour))
-plot(k_hour[1,], k_hour[2,], main = "Hour Gaussian Kernel", xlab = "Days", ylab = "K")
+
+# Get the time format we want
+times_interest <- c(paste0("0",seq(4,8,by=2),":00:00"), paste0(seq(10,24,by=2),":00:00"))
+
+k_hour <- sapply(i, function(i) hour_distance(train[i,], times_interest, h_hour))
 ```
 
-Now we setting up the addition kernel of sum of 3 kernels, and plot the kernel function as follows.
+Now we setting up another new kernel(sum of 3 kernels), and plot the prediction value as follows.
 
-```{r 1.4, echo=FALSE} 
+```{r 1.4} 
 ################################ 1.4 Sum Kernel ###############################
-# we filter 2 times 
-train_filtered <- train[train$time < times_interest, ]
-train_filtered <- train_filtered[train_filtered$date < date_interest, ]
+predicted_temp_sum <- sapply(1:length(times_interest), function(x) 
+        sum((k_distance[2,] + k_day[2,] + k_hour[x,]) * train$air_temperature)
+        / sum(k_distance[2,], k_day[2,], k_hour[x,]))
+
+plot(seq(4,24,by=2),predicted_temp_sum, type="l", 
+main = "Temp in Linkoping(Sum)", xlab = "Time", ylab = "Temp")
 
 ```
 
-```{r 1.5, echo=FALSE} 
+Now we setting up another new kernel(mul of 3 kernels), and plot the prediction value as follows.
+
+```{r 1.5} 
 ################################ 1.5 Multi Kernel ###############################
+predicted_temp_mul <- sapply(1:length(times_interest), function(x) 
+        sum((k_distance[2,] * k_day[2,] * k_hour[x,]) * train$air_temperature)
+        / sum(k_distance[2,] * k_day[2,] * k_hour[x,]))
+
+plot(seq(4,24,by=2),predicted_temp_mul, type="l", 
+main = "Temp in Linkoping (Mul)", xlab = "Time", ylab = "Temp")
+
 
 
 ```
-## Assignment 2: SUPPORT VECTOR MACHINES
+Compare the sum and mul version of the kernel, we can see that there have around 1 degree difference. According to the real results, we found the following near Nov in Linköping.
+
+1962-10-09,18:00:00,9.6 / 1971-11-29,06:00:00,0 / 1975-11-06,12:00:00,10 / 1961-11-02,18:00:00,11 
+
+It seems that the predictions still have some gaps near the real results.
+
+## Assignment 2: SUPPORT VECTOR MACHINES(Solved by Satya Sai Naga Jaya Koushik Pilla)
 
 ### Answer:
 
@@ -291,7 +314,7 @@ pred_filter3
 ```
 
 
-## Assignment 3: NEURAL NETWORKS
+## Assignment 3: NEURAL NETWORKS(Solved by Daniele	Bozzoli)
 
 ### Answer:
 
@@ -304,78 +327,98 @@ set.seed(1234567890)
 ```
 
 ### 3.1 
-We observe in the plot that the predictions from the neural net seem to be generally good predictions for the sine function.
 
-```{r 3.1,echo=FALSE}
-Var <- runif(500, 0, 10)
-mydata <- data.frame(Var, Sin=sin(Var))
-tr <- mydata[1:25,] # Training
-te <- mydata[26:500,] # Test
+We observe in the plot that the predictions using neural network seem to be good predictions for the sine function.
+
+Since this function is differentiable, it will also provide a smooth gradient.
+
+```{r 3.1}
+###########################  3.1 ################################################
+rand_var <- runif(500, 0, 10)
+df <- data.frame(rand_var, Sin=sin(rand_var))
+train <- df[1:25,] # Training
+test <- df[26:500,] # Test
 
 # Random initialization of the weights in the interval [-1, 1]
 winit <- runif(31, -1, 1)
-nn <- neuralnet(data = tr, formula = Sin ~ Var, hidden = c(10))
+nn <- neuralnet(data = train, formula = Sin ~ rand_var, hidden = c(10))
 
 # Plot of the training data (black), test data (blue), and predictions (red)
-plot(tr,  col = "black", cex=1)
-points(te, col = "blue", cex=1)
-points(te[,1], predict(nn,te), col="red", cex=1)
+plot(train,  col = "black", cex=1, main="Default")
+points(test, col = "blue", cex=1)
+points(test[,1], predict(nn,test), col="red", cex=1)
 legend(x = 6.5, y = -0.6, legend = c("Training data", "Test data",
 "Pred"), col = c("black", "blue", "red"), cex = 0.7,pch = 1)
 ```
 
 ### 3.2 
-```{r 3.2.1,echo=FALSE}
+
+First of all, we define linear activation function as follows. According to the plot, we can see that the prediction is a straight line compared to the train and test data which shows a sine wave.
+
+```{r 3.2.1}
+###########################  3.2.1 Linear #######################################
+
 #Linear
 h1 <- function(x) {
   x
 } 
 
-nn1 <- neuralnet(data = tr, formula = Sin ~ Var, hidden = c(10), act.fct = h1)
+nn1 <- neuralnet(data = train, formula = Sin ~ rand_var, hidden = c(10), act.fct = h1)
 
 # Plot of the training data (black), test data (blue), and predictions (red)
-plot(tr,  col = "black", cex=1)
-points(te, col = "blue", cex=1)
-points(te[,1], predict(nn1,te), col="red", cex=1)
+plot(train,  col = "black", cex=1, main="Linear")
+points(test, col = "blue", cex=1)
+points(test[,1], predict(nn1,test), col="red", cex=1)
 legend(x = 6.5, y = -0.6, legend = c("Training data", "Test data",
 "Pred"), col = c("black", "blue", "red"), cex = 0.7,pch = 1)
 
 ```
 
-```{r 3.2.2,echo=FALSE,error = TRUE}
+Then we define ReLU activation function as follows, we use ifelse to define the function since max(0,x) not working here.
+
+As what can be seen in the plot, ReLU function as an activation function do not provide good results on test data.
+
+The right prediction range only in around(0.5,4) . when random variable in range (4,10),  it shows a straight line as what we see in linear activation function.
+
+```{r 3.2.2, error=TRUE}
+###########################  3.2.2 Relu #######################################
 
 #ReLU
 h2 <- function(x) {
-  max(0,x)
+  # max(0,x) not working
+  ifelse(x>=0,x,0)
 }
 
 
-nn2 <- neuralnet(formula = Sin ~ Var, data = tr, hidden = 10,
+nn2 <- neuralnet(formula = Sin ~ rand_var, data = train, hidden = 10,
 startweights = winit, act.fct = h2)
 
 # Plot of the training data (black), test data (blue), and predictions (red)
-plot(tr,  col = "black", cex=1)
-points(te, col = "blue", cex=1)
-points(te[,1], predict(nn2,te), col="red", cex=1)
+plot(train,  col = "black", cex=1,main="Relu")
+points(test, col = "blue", cex=1)
+points(test[,1], predict(nn2,test), col="red", cex=1)
 legend(x = 6.5, y = -0.6, legend = c("Training data", "Test data",
 "Pred"), col = c("black", "blue", "red"), cex = 0.7,pch = 1)
 
 ```
 
-```{r 3.2.3,echo=FALSE}
+Last we define Softplus activation function as follows, as what can be seen in the plot, Softplus function as an activation function provide good results on test data.
+
+```{r 3.2.3}
+###########################  3.2.3 Softplus #######################################
 
 #Softplus
 h3 <- function(x) {
   log(1+exp(x))
 }
 
-nn3 <- neuralnet(formula = Sin ~ Var, data = tr, hidden = 10,
+nn3 <- neuralnet(formula = Sin ~ rand_var, data = train, hidden = 10,
 startweights = winit, act.fct = h3)
 
 # Plot of the training data (black), test data (blue), and predictions (red)
-plot(tr,  col = "black", cex=1)
-points(te, col = "blue", cex=1)
-points(te[,1], predict(nn3,te), col="red", cex=1)
+plot(train,  col = "black", cex=1,main="Softplus")
+points(test, col = "blue", cex=1)
+points(test[,1], predict(nn3,test), col="red", cex=1)
 legend(x = 6.5, y = -0.6, legend = c("Training data", "Test data",
 "Pred"), col = c("black", "blue", "red"), cex = 0.7,pch = 1)
 
@@ -384,27 +427,54 @@ legend(x = 6.5, y = -0.6, legend = c("Training data", "Test data",
 
 ### 3.3
 
-```{r 3.3,echo=FALSE}
+The code is as follows. When random in range (0,10), the prediction is match the test data, when it is greater than 10, the prediction begin to get smaller and eventually convergeing to a value which is around -3.
+
+```{r 3.3}
+###########################  3.3  #######################################
 # Sample 500 points
-Var <- runif(500, min = 0, max = 50) 
-df <- data.frame(Var, Sin = sin(Var))
-plot(tr, cex = 2, xlim = c(0, 50), ylim = c(-11, 1.2))
+set.seed(1234567890)
+rand_var <- runif(500, min = 0, max = 50) 
+df <- data.frame(rand_var, Sin = sin(rand_var))
+plot(train, cex = 2, xlim = c(0, 50), ylim = c(-6, 2))
 points(df, col = "blue", cex = 1)
 points(df[, 1], predict(nn, df), col = "red", cex = 1)
+plot(nn)
 ```
 
 ### 3.4
-```{r 3.4,echo=FALSE}
-data.frame(Weights = nn$weights[[1]][[1]][2, ], Bias = nn$weights[[1]][[1]][1,])
+We define the following code to get the value of the convergence.
+by setting a relativ big value 100, we can calculate the approximation value of the convergence around -3.105391.
+
+```{r 3.4}
+###########################  3.4  #######################################
+
+sigmoid <- function(x){
+  return(1 / (1 + exp(-x)))
+}
+#
+weight_1 <- nn$weights[[1]][[1]][2,]
+bias_1 <- nn$weights[[1]][[1]][1,]
+
+sigmoid_val <- sigmoid(weight_1 * 100 + bias_1)
+
+bias_2 <- nn$weights[[1]][[2]][1,]
+weight_2 <- nn$weights[[1]][[2]][2:11,]
+cat("The value will converge to:", weight_2 %*% sigmoid_val + bias_2, "\n")
+
 ```
 
 ### 3.5
+The code as follows.
 
-```{r 3.5,echo=FALSE}
+We can see that the pridcton is not good, the reason is many input values can be mapping to a same value if we using sine function, but if we inverse this function, the original input value can not be calculated through the inverse of sine function.so the NN can not learn the mapping relationship between input and output and generate a bad prediction. 
+
+```{r 3.5}
+###########################  3.5  #######################################
+
 # Sample 500 points
-Var <- runif(500, min = 0, max = 10) 
-df <- data.frame(Sin = sin(Var), Var)
-nn4 <- neuralnet(formula = Var ~ Sin, data = df, hidden = 10, startweights = winit, threshold = 0.1)
+rand_var <- runif(500, min = 0, max = 10) 
+df <- data.frame(Sin = sin(rand_var), rand_var)
+nn4 <- neuralnet(formula = rand_var ~ Sin, data = df, hidden = 10, startweights = winit, threshold = 0.1)
 pred_4 <- predict(nn4, df)
 
 plot(df, cex = 2, col = "blue")
