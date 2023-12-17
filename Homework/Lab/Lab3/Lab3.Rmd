@@ -484,6 +484,7 @@ col = c("blue", "red"), cex = 1, pch = 1)
 
 
 ```
+
 \newpage
 ## Appendix: All code for this report
 
