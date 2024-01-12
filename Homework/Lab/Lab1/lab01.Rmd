@@ -16,8 +16,6 @@ library(kknn)
 library(ggplot2)
 library(Metrics)
 library(caret)
-
-
 ```
 
 ## Assignment 1: Handwritten digit recognition with K- nearest neighbors  (Solved by Qinyuan Qi - qinqi464)

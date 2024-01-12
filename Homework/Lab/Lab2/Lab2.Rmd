@@ -4,11 +4,21 @@ author:
   - Qinyuan Qi(qinqi464)
   - Satya Sai Naga Jaya Koushik	Pilla (satpi345)
   - Daniele	Bozzoli(danbo826)  
-date: "2023-11-26"
+date: "`r Sys.Date()`"
 output: pdf_document
 ---
 
-```{r setup1, echo=FALSE}
+## Statement of Contribution
+For Lab2, we decided to split the three assignments equally, Qinyuan completed Assignment 1, Satya
+completed Assignment 2 and Daniele completed Assignment 3, after which, for verification sake, we completed
+each other’s assignments as well and validated our findings. The report was also compiled by three of us,
+with each handling their respective assignments.
+
+
+## Assignment 1: Explicit regularization
+### Answer:
+
+```{r setup1, echo=FALSE, cache=TRUE}
 ###########################  Init code For  Assignment 1 #######################
 rm(list = ls())
 library(plyr)
@@ -21,50 +31,44 @@ library(glmnet)
 library(rpart)
 library(rpart.plot)
 
-# read data
-data <- read.csv("tecator.csv")
- 
-row_num <- nrow(data)
-cols_num <- ncol(data)
-
-# set data split ratio to 0.5, 0.5
-ratio <- c(train = .5, test = .5)
-
 # set random seed
 set.seed(12345)
-
-# split data to training and test dataset
-train_id <- sample(1:row_num, floor(row_num * ratio[1]))
-train_set <- data[train_id, ]
-
-test_id <- setdiff(1:row_num, train_id)
-test_set <- data[test_id, ]
 ```
 
-## Assignment 1: Explicit regularization(by Qinyuan Qi(qinqi464))
-
-### Answer:
 ### (1)
+
+According to the question, we can model create a linear model like the following.
+
+$$
+Fat = \beta_{0} + \beta_{1} Channel_{1} + \beta_{2}Channel_{2}+ ... + \beta_{100}Channel_{100} + \epsilon = \sum{\beta_{i} Channel_{i}} + \epsilon
+$$
+
+In the above formula, $\beta_{0}$ is the intercept, while the remaing $\beta$ are the cofeeicients corresponding to each channel.
 
 According to the output, the model generated use 100 channel features, and almost all the channels provide contributions to the target, however,  p value shows that only very limited channels are useful. And the  $MSE_{test} =  722.4294$ , $MSE_{training} = 0.005709117$. It means training data fit pretty well,however the test data fit not as expected, and the model overfit the data.
 
-```{r 1.1}
+```{r 1.1, echo=FALSE,cache=TRUE}
 ######################  Assignment 1.1 #########################################
 
-selected_x_columns <- grep(paste0("^", "Channel"), names(train_set), value = TRUE)
 
-X_data_train <- train_set[, selected_x_columns]
-Y_data_train <- train_set[names(train_set) == "Fat"]
-train_data_set <- cbind(X_data_train, Y_data_train)
+# read data
+data <- read.csv("tecator.csv")
+data <- data %>% select(Fat,Channel1:Channel100)
+
+row_num <- nrow(data)
+# set data split ratio to 0.5, 0.5
+ratio <- c(train = .5, test = .5)
+
+# split data to training and test dataset
+train_id <- sample(1:row_num, floor(row_num * ratio[1]))
+train_data_set <- data[train_id, ]
+
+test_id <- setdiff(1:row_num, train_id)
+test_data_set <- data[test_id, ]
 
 # fit linear model
 lm_model <- lm(Fat ~ ., data = train_data_set)
 
-
-# predict the test set and train set
-X_data_test <- test_set[, selected_x_columns]
-Y_data_test <- test_set[names(test_set) == "Fat"]
-test_data_set <- cbind(X_data_test, Y_data_test)
 predicted_fat_test <- predict(lm_model, test_data_set)
 predicted_fat_train <- predict(lm_model, train_data_set)
 
@@ -81,77 +85,96 @@ summary(lm_model)
 The cost function in lasso regression is:
 
 $$
-MSE(y,y_pred) + \alpha * \sum_{i=1}^{n} |\theta_i|
+\hat{\theta} = argmin_{\theta} \frac{1}{n} || X\theta||^{2} + \lambda ||\theta||_{1}
 $$
 
 ### (3)
 
-According to the plot of lasso_reg, we choose top edge number to 3 which contains 3 curves and choose the appropriate lambda value , which is around -3.
+According to the plot of lasso_reg, we find that when $log(\lambda)$ is small, degree of freedom is big which
+means more features explain the target variable, but when $log(\lambda)$ increase, the degree of freedom decrease 
+at the same time, and coefficient get close to 0 in most of the time. But we also find that some of the features's 
+coefficient line fluctuate when it is less than 0. But all of the features's coefficient will converge to 0 at last.
 
-```{r 1.3}
+```{r 1.3.1, echo=FALSE,cache=TRUE}
 ######################  Assignment 1.3 #########################################
 # regularize the data before we fit the model
 pre_proc_val <- preProcess(train_data_set, method = c("center", "scale"))
 train_data_set <- predict(pre_proc_val, train_data_set)
 test_data_set <- predict(pre_proc_val, test_data_set)
 
-new_cols_num <- ncol(train_data_set)
-
-X_data_train <- train_data_set[, 1:(new_cols_num - 1)]
-Y_data_train <- train_data_set[, new_cols_num]
-X_data_train <- as.matrix(X_data_train)
-
-dummies <- dummyVars(Fat ~ ., data = train_data_set)
-
-train_dummies <- predict(dummies, newdata = train_data_set)
-test_dummies <- predict(dummies, newdata = test_data_set)
-
-x <- as.matrix(train_dummies)
-y_train <- train_data_set$Fat
-
-x_test <- as.matrix(test_dummies)
-y_test <- test_data_set$Fat
-
-# set range of lambda, we can know the range of lambda, then set it manually
-grid <- 10^seq(2, -3, by = -.1)
+x_train <- as.matrix(train_data_set %>% select(-Fat))
+y_train <- as.matrix(train_data_set %>% select(Fat))
 
 # when alpha = 1, it is lasso regression
-lasso_reg <- glmnet(x, y_train, alpha = 1, family = "gaussian", lambda = grid)
+lasso_reg <- glmnet(x_train, y_train, alpha = 1,family = "gaussian")
 
-summary(lasso_reg)
+#summary(lasso_reg)
 
-plot(lasso_reg, xvar = "lambda", label = TRUE)
+```
+
+According to the calculation and output of the code, we find that lambda is: 0.05123599 $log(\lambda)$ is -2.971313 when feature number is 4 (including the intercept.
+
+```{r 1.3.2,echo=FALSE,cache=TRUE}
+
+lambda_deg_freedom <- data.frame(lambda = lasso_reg$lambda,
+                                 deg_freedom = lasso_reg$df)
+
+lambda_deg_freedom <- lambda_deg_freedom %>% arrange(desc(deg_freedom))
+
+lambda_deg_freedom_num <- lambda_deg_freedom[which(lambda_deg_freedom$deg_freedom == 4),] %>% 
+                        head(1) %>% pull(lambda)
+
+cat("lambda is ",lambda_deg_freedom_num,
+    " log(lambda) is ",log(lambda_deg_freedom_num),
+    "\nwhen feature number is 4 (including the intercept)\n")
+
+plot(lasso_reg, xvar="lambda", xlab='Log Lambda')
+abline(v=log(lambda_deg_freedom_num), col="red")
 ```
 
 ### (4)
 
 the cost function in ridge regression is:
+
 $$
-  MSE(y,y_pred) + \alpha * \sum_{i=1}^{n} (\theta_i)^2
+\hat{\theta} = argmin_{\theta} \frac{1}{n} || X\theta||^{2} + \lambda ||\theta||_{2}^{2}
 $$
 
-Compare 2 plots, we can find that for lasso regression, most of the features' coefficient convergence speed is very different. however, when using ridge regression, most of the features' coefficient convergence speed is almost same when log(lambda) increase.
-```{r 1.4}
+For ridge regression, we find that the degree of freedom always keep same when $log(\lambda)$ increase,
+but the coefficient of features seems to will converge to 0, but after check beta value of ridge_reg, we found 
+that the coefficient of features will not converge to 0, but will become a very small value.
+
+Compare to lasso regression, we can not find the required lambda value when degree of freedom is 4, since coefficient
+value not converge to 0, but converge to a very small value.
+
+```{r 1.4,echo=FALSE,cache=TRUE}
 ######################  Assignment 1.4 #########################################
 # when alpha = 0, it is ridge regression
-ridge_reg <- glmnet(x, y_train, alpha = 0, lambda = grid)
+ridge_reg <- glmnet(x_train, y_train, alpha = 0,family = "gaussian")
 
-summary(ridge_reg)
+lambda_deg_freedom <- data.frame(lambda = ridge_reg$lambda,
+                                 deg_freedom = ridge_reg$df)
 
-plot(ridge_reg, xvar = "lambda", label = TRUE)
+lambda_deg_freedom <- lambda_deg_freedom %>% arrange(desc(deg_freedom))
+
+lambda_deg_freedom_num <- lambda_deg_freedom[which(lambda_deg_freedom$deg_freedom == 4),] %>% 
+                        head(1) %>% pull(lambda)
+
+plot(ridge_reg,xvar="lambda", xlab='Log Lambda')
 ```
 
 ### (5)
 The plot as follows, when log(lambda) increase, CV score increase.
 Optimized lambda is -5.39019, and in this case, around 10 variables were chosen.
 
-When lambda = -4, MSE is higher than when lambda=-5.39019. we can say that it results in a statistically significantly better prediction.
+When lambda = -4, MSE is higher than when lambda=-5.39019. we can say that it results 
+in a statistically significantly better prediction.
 
 The scatter plot as follow.
 
 Since almost all points are around the 45-degree line,it indicate accurate predictions.
 
-```{r 1.5,warning=FALSE}
+```{r 1.5,warning=FALSE, cache=TRUE}
 # when alpha = 1, it is lasso regression
 cv_lasso_model <- cv.glmnet(x, y_train, alpha = 1) 
 summary(cv_lasso_model)
@@ -161,8 +184,8 @@ lambda_values <- log(cv_lasso_model$lambda)
 cv_scores <- cv_lasso_model$cvm
 
 # Plot the dependence of CV score on log(lambda)
-plot(cv_lasso_model)
-plot(lambda_values, cv_scores, type = "b", xlab = "log(lambda)", ylab = "CV Score",main = "CV Score vs log(lambda)")
+plot(cv_lasso_model,xlab = "log lambda")
+plot(lambda_values, cv_scores, type = "b", xlab = "log lambda ", ylab = "CV Score",main = "CV Score vs log(lambda)")
 
 min_cv_lambda <- log(cv_lasso_model$lambda.min)
 min_cv_score <- min(cv_scores)
@@ -178,7 +201,7 @@ plot(y_test, predictions, pch = 16, col = "red",
 abline(a = 0, b = 1, col = "blue", lty = 2)
 ```
 
-## Assignment 2: Decision trees and logistic regression for bank marketing(by Satya Sai Naga Jaya Koushik	Pilla)
+## Assignment 2: Decision trees and logistic regression for bank marketing
 
 ### Answer:
 
@@ -189,7 +212,7 @@ rm(list = ls())
 ```
 
 ### (1)
-```{r 2.1}
+```{r 2.1, cache=TRUE}
 ######################  Assignment 2.1 #########################################
 # read data
 data <- read.csv("bank-full.csv",header = TRUE, sep = ";")
@@ -234,7 +257,7 @@ misclassification is listed below.
 According to the data in the table above, the first one has a good misclassification rate of train and validation.
 the last one has a good misclassification rate of train but a  little bit large  misclassification rate on validation set. b will not be considered, since both of values are biggest among 3 methods.
 
-```{r 2.2}
+```{r 2.2, cache=TRUE}
 ######################  Assignment 2.2 #########################################
 tree_a <- rpart(y ~ ., data = train_set, method = "class")
 tree_b <- rpart(y ~ ., data = train_set, method = "class", control = rpart.control(minbucket = 7000))
@@ -277,7 +300,7 @@ rpart.plot(tree_c)
 
 ### (3)
 
-```{r 2.3}
+```{r 2.3, cache=TRUE}
 ######################  Assignment 2.3 #########################################
 # Set folds number
 num_folds <- 5
@@ -317,14 +340,14 @@ ggplot(plot_data, aes(x = Leaves)) +
 
 ### (4)
 An optimized tree depth = 1.
-```{r 2.4.1}
+```{r 2.4.1, cache=TRUE}
 ######################  Assignment 2.4 #########################################
 final_tree <- rpart(y ~ ., data = train_set, method = "class", 
 control = rpart.control(cp = 0.0005), maxdepth = 1)
 
 ```
 
-```{r 2.4.2,eval=FALSE}
+```{r 2.4.2,eval=FALSE, cache=TRUE}
 validation_predictions <- predict(final_tree, validation_set, type = "class")
 
 conf_matrix <- confusionMatrix(validation_predictions, validation_set$y)
@@ -342,7 +365,7 @@ cat("F1 Score:", f1_score, "\n")
 
 ### (5)
 
-```{r 2.5}
+```{r 2.5, cache=TRUE}
 ######################  Assignment 2.5 #########################################
 loss_matrix <- matrix(c(0, 1, 5, 0), nrow = 2)
 test_predictions <- predict(final_tree, test_set, type = "class", parms = list(loss = loss_matrix))
@@ -353,7 +376,7 @@ print(conf_matrix)
 ```
 
 ### (6)
-```{r 2.6,eval=FALSE}
+```{r 2.6,eval=FALSE, cache=TRUE}
 ######################  Assignment 2.6 #########################################
 threshold <- 0.05  
 logistic_model <- glm(y ~ ., data = train_set, family = "binomial")
@@ -376,11 +399,11 @@ cat("True Positive Rate (TPR):", TPR, "\n")
 cat("False Positive Rate (FPR):", FPR, "\n")
 ```
 
-## Assignment 3. Principal components and implicit regularization(by Daniele	Bozzoli(danbo826))
+## Assignment 3. Principal components and implicit regularization
 
 ### Answer:
 
-```{r setup3, include=FALSE}
+```{r setup3, include=FALSE, cache=TRUE}
 ###########################  Init code For  Assignment 3 #######################
 rm(list=ls(all.names = T))
 library(ggplot2)
@@ -392,7 +415,7 @@ data <- read.csv("communities.csv")
 ### (1)
 According to the output, we need 35 components to obtain at least 95% of variance in the data. The proportion of variation explained by first and second principal components are 0.2501699 and 0.1693597 respectively.
 
-```{r 3.1}
+```{r 3.1, cache=TRUE}
 ######################  Assignment 3.1 #########################################
 n <- nrow(data)
 features <- data[, -101]
@@ -431,7 +454,7 @@ explanation. The other 4 features that contribute the most are features 93
 (PctBornSameState), 61 (PctSpeakEnglOnly), 5 (racePctWhite) and 76 
 (PersPerRentOccHous).
 
-```{r 3.2}
+```{r 3.2, cache=TRUE}
 ######################  Assignment 3.2 #########################################
 PCA <- princomp(features)
 L <- PCA$loadings
@@ -446,7 +469,7 @@ Train MSE is 0.2752071 and Test MES is 0.4248011.
 We observe how the MSE of the test data is significantly bigger than
 the MSE obtained from train data. This might happen because the model chosen is overfitting our given data.
 
-```{r 3.3}
+```{r 3.3, cache=TRUE}
 ######################  Assignment 3.3 #########################################
 # train and test data
 id <- sample(1:n, floor(n*0.5))
@@ -479,7 +502,7 @@ The following iterations do not significally improve our model
 and hence can led us to overfitting.
 
 
-```{r 3.4}
+```{r 3.4, cache=TRUE}
 ######################  Assignment 3.4 #########################################
 train_new <- as.matrix(trainS[,-101])  # training data - response variable
 train_r <- trainS[,101] # training response variable
