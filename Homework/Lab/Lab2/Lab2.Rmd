@@ -231,8 +231,6 @@ Please check the appendix for the code
 
 ```{r 2.1,echo=FALSE}
 ######################  Assignment 2.1 #########################################
-
-
 # Read data
 data <- read.csv("bank-full.csv",header = TRUE, sep = ";")
 
@@ -272,7 +270,6 @@ The following is the default tree.
 
 ```{r 2.2.1,echo=FALSE,out.height="150px", fig.align = 'center'}
 ######################  Assignment 2.2 #########################################
-
 # default fit
 tree_a <- tree(y ~ ., data = train_set)
 plot(tree_a,type = "uniform",main = "default fit")
@@ -315,6 +312,7 @@ calc_misclassification_rate <- function(tree_model,dataset){
   info <- paste("misclass rate of ",as.character(substitute(tree_model))," and ", 
              as.character(substitute(dataset)) ," is ",data_set_misclassification_rate,"")
   misclassifications <<- c(misclassifications,info)
+  return(info)
 }
 
 misclassifications <- c()
@@ -325,10 +323,6 @@ calc_misclassification_rate(tree_b,train_set)
 calc_misclassification_rate(tree_b,validation_set)
 calc_misclassification_rate(tree_c,train_set)
 calc_misclassification_rate(tree_c,validation_set)
-
-for (i in 1:6){
-  print(misclassifications[i])
-}
 
 ```
 Misclassifications for different trees and datasets are listed above.
@@ -409,62 +403,116 @@ $\textbf{poutcome, month, contact, pdays, age, day, balance, housing, job}$
 
 ### (4)
 
-We calculate the 
-```{r 2.4.1,eval=FALSE}
+The misclassification rate for test and validation data using the pruned tree is as follows.
+
+```{r 2.4.1,echo=FALSE}
 ######################  Assignment 2.4 #########################################
+opt_pred_validation <- predict(opt_tree_with_optimal_leaves,
+                         newdata = validation_set,
+                         type = "class")
+misclassifications_opt_tree_with_optimal_leaves_valid <- 
+                    calc_misclassification_rate(opt_tree_with_optimal_leaves,validation_set)
 
+opt_pred_test <- predict(opt_tree_with_optimal_leaves,
+                         newdata = test_set,
+                         type = "class")
+
+misclassifications_opt_tree_with_optimal_leaves_test <- 
+                    calc_misclassification_rate(opt_tree_with_optimal_leaves,test_set)
+
+cat(misclassifications_opt_tree_with_optimal_leaves_test)
+cat(misclassifications_opt_tree_with_optimal_leaves_valid)
 ```
 
-```{r 2.4.2,eval=FALSE, cache=TRUE,}
-validation_predictions <- predict(final_tree, validation_set, type = "class")
+The confusion matrix for the test data is as follows.
 
-conf_matrix <- confusionMatrix(validation_predictions, validation_set$y)
-
-accuracy <- conf_matrix$overall["Accuracy"]
-f1_score <- conf_matrix$byClass["F1"]
-
-# Print the confusion matrix, accuracy, and F1 score
-cat("Confusion Matrix:\n")
-cat(conf_matrix$table,"\n")
-
-cat("Accuracy:", accuracy, "\n")
-cat("F1 Score:", f1_score, "\n")
+```{r 2.4.2,echo=FALSE}
+######################  Assignment 2.4 #########################################
+table(test_set$y, opt_pred_test)
 ```
+Accuracy and F1 score for the test data are as follows.
+
+```{r 2.4.3,echo=FALSE}
+# we constructed a data frame to store all the info we needed
+model_matrix_df <- data.frame(matrix(ncol = 4,nrow = 0))
+colnames(model_matrix_df) <- c("recall","precision","accuracy","f1_score")
+
+calc_model_matrix <- function(real_val, pred_val){
+  confusion_matrix <- table(real_val, pred_val)
+  TN <- confusion_matrix[1,1]
+  FP <- confusion_matrix[1,2]
+  FN <- confusion_matrix[2,1]
+  TP <- confusion_matrix[2,2]
+  N <- TN + FP
+  P <- FN + TP
+  TPR <- TP / P
+  FPR <- FP / N
+  recall <- TP / (TP + FN)
+  precision <- TP / (TP + FP)
+  accuracy <- (TP + TN) / (N + P)
+  f1_score <- 2 * (precision * recall) / (precision + recall)
+  model_matrix_df <<- rbind(  
+                      model_matrix_df,
+                      data.frame(
+                        'recall' = recall,
+                        'precision' = precision,
+                        'accuracy' = accuracy,
+                        'f1_score' = f1_score
+                      )
+                    )
+  return(model_matrix_df)
+}
+
+calc_model_matrix(test_set$y, opt_pred_test)[1,]
+```
+According to the output, we know that the accuracy is `r model_matrix_df[1,3]` and the F1 score is `r model_matrix_df[1,4]`.
+Comparing it to the results of the validation data, we can say that the model gets a very good prediction result.
+
+It's better to choose the F1 score as the metric to evaluate the model because f1_score involves both precision and recall in its formula 
+and those 2 metrics consider more on TP value, so improving f1_score can make the model good at predicting the positive class.
 
 ### (5)
 
-```{r 2.5, cache=TRUE,eval=FALSE}
-######################  Assignment 2.5 #########################################
-loss_matrix <- matrix(c(0, 1, 5, 0), nrow = 2)
-test_predictions <- predict(final_tree, test_set, type = "class", parms = list(loss = loss_matrix))
-conf_matrix <- table(Actual = test_set$y, Predicted = test_predictions)
-cat("Confusion Matrix:\n")
-print(conf_matrix)
+We will perform a decision tree classification with a loss matrix by changing the type of the function call of precidt to vector. 
+The following is the result.
 
+```{r 2.5,echo=FALSE}
+######################  Assignment 2.5 #########################################
+opt_pred_test_new_loss <- predict(opt_tree_with_optimal_leaves,
+                                  newdata = test_set,
+                                  type = "vector")
+
+
+new_test_set <- cbind(test_set, as.data.frame(opt_pred_test_new_loss))
+true_label <- new_test_set$y
+new_prediction <- c()
+
+# We will change the condition based on the given loss matrix
+
+for(i in 1:length(true_label)){
+  if(new_test_set[i, "no"] / new_test_set[i, "yes"] > 5){
+    new_prediction <- rbind(new_prediction, "no")
+  }else{
+    new_prediction <- rbind(new_prediction, "yes")
+  }
+}
+
+# Output confusion matrix
+table(test_set$y, new_prediction)
+cat("model misclassification is \n")
+calc_misclassification_error(test_set$y, new_prediction)
+cat("model matrics are \n")
+calc_model_matrix(test_set$y, new_prediction)[2,]
 ```
 
+We found that f1_score doubled from 0.224554 to 0.4862605. This is because we change the imbalance of FP and TN values.
+Which means we add more penalties on TN. Meanwhile, the model's accuracy decreased from 0.8910351 to 0.8731937, just about a 2% decrease.
+Since we prefer using f1_score as the metric, we can say that the model is improved.
+
 ### (6)
-```{r 2.6,eval=FALSE, cache=TRUE,eval=FALSE}
+```{r 2.6,eval=FALSE}
 ######################  Assignment 2.6 #########################################
-threshold <- 0.05  
-logistic_model <- glm(y ~ ., data = train_set, family = "binomial")
 
-logistic_probabilities <- predict(logistic_model, test_set, type = "response")
-logistic_predictions <- ifelse(logistic_probabilities > threshold, "yes", "no")
-
-conf_matrix_logistic <- confusionMatrix(logistic_predictions, test_set$y)
-
-TP <- conf_matrix_logistic$table["yes", "yes"]
-FN <- conf_matrix_logistic$table["no", "yes"]
-FP <- conf_matrix_logistic$table["yes", "no"]
-TN <- conf_matrix_logistic$table["no", "no"]
-
-TPR <- TP / (TP + FN)
-FPR <- FP / (FP + TN)
-
-# Print the results
-cat("True Positive Rate (TPR):", TPR, "\n")
-cat("False Positive Rate (FPR):", FPR, "\n")
 ```
 
 ## Assignment 3. Principal components and implicit regularization
