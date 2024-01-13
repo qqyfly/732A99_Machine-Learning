@@ -9,9 +9,9 @@ output: pdf_document
 ---
 
 ## Statement of Contribution
-For Lab2, we decided to split the three assignments equally, Qinyuan completed Assignment 1, Satya
-completed Assignment 2 and Daniele completed Assignment 3, after which, for verification sake, we completed
-each other’s assignments as well and validated our findings. The report was also compiled by three of us,
+For Lab 2, we decided to split the three assignments equally, Qinyuan completed Assignment 1, Satya
+completed Assignment 2 and Daniele completed Assignment 3, after which, for verification's sake, we completed
+each other's assignments as well and validated our findings. The report was also compiled by three of us,
 with each handling their respective assignments.
 
 
@@ -29,7 +29,7 @@ library(ggplot2)
 library(repr)
 library(glmnet)
 library(rpart)
-library(rpart.plot)
+library(tree)
 
 # set random seed
 set.seed(12345)
@@ -37,17 +37,19 @@ set.seed(12345)
 
 ### (1)
 
-According to the question, we can model create a linear model like the following.
+According to the question, we can create a linear model like the following.
 
 $$
 Fat = \beta_{0} + \beta_{1} Channel_{1} + \beta_{2}Channel_{2}+ ... + \beta_{100}Channel_{100} + \epsilon = \sum{\beta_{i} Channel_{i}} + \epsilon
 $$
 
-In the above formula, $\beta_{0}$ is the intercept, while the remaing $\beta$ are the cofeeicients corresponding to each channel.
+In the above formula, $\beta_{0}$ is the intercept, while the remaining $\beta$ are the parameters corresponding to each channel.
 
-According to the output, the model generated use 100 channel features, and almost all the channels provide contributions to the target, however,  p value shows that only very limited channels are useful. And the  $MSE_{test} =  722.4294$ , $MSE_{training} = 0.005709117$. It means training data fit pretty well,however the test data fit not as expected, and the model overfit the data.
+According to the output, the model generated uses 100 channel features, and almost all the channels provide contributions to the target.
+However, the p-value shows that only very limited channels are useful. And the  $MSE_{test} =  722.4294$ , $MSE_{training} = 0.005709117$. 
+It means the training data fit pretty well, however, the test data fit not as expected, and the model overfits the data.
 
-```{r 1.1, echo=FALSE,cache=TRUE}
+```{r 1.1, echo=FALSE, cache=TRUE}
 ######################  Assignment 1.1 #########################################
 
 
@@ -59,7 +61,7 @@ row_num <- nrow(data)
 # set data split ratio to 0.5, 0.5
 ratio <- c(train = .5, test = .5)
 
-# split data to training and test dataset
+# split data to the train dataset and the test dataset
 train_id <- sample(1:row_num, floor(row_num * ratio[1]))
 train_data_set <- data[train_id, ]
 
@@ -90,31 +92,21 @@ $$
 
 ### (3)
 
-According to the plot of lasso_reg, we find that when $log(\lambda)$ is small, degree of freedom is big which
-means more features explain the target variable, but when $log(\lambda)$ increase, the degree of freedom decrease 
-at the same time, and coefficient get close to 0 in most of the time. But we also find that some of the features's 
-coefficient line fluctuate when it is less than 0. But all of the features's coefficient will converge to 0 at last.
+According to the plot of lasso_reg, we find that when $log(\lambda)$ is small, the degree of freedom is big which
+means more features explain the target variable, but when $log(\lambda)$ increases, the degree of freedom decrease 
+at the same time, and coefficient get close to 0 in most of the time. We also find that some of the feature's 
+coefficient line fluctuates when it is less than 0. But all of the features's coefficients will converge to 0 at last.
 
-```{r 1.3.1, echo=FALSE,cache=TRUE}
+```{r 1.3.1, echo=FALSE, cache=TRUE}
 ######################  Assignment 1.3 #########################################
-# regularize the data before we fit the model
-pre_proc_val <- preProcess(train_data_set, method = c("center", "scale"))
-train_data_set <- predict(pre_proc_val, train_data_set)
-test_data_set <- predict(pre_proc_val, test_data_set)
-
 x_train <- as.matrix(train_data_set %>% select(-Fat))
 y_train <- as.matrix(train_data_set %>% select(Fat))
 
 # when alpha = 1, it is lasso regression
 lasso_reg <- glmnet(x_train, y_train, alpha = 1,family = "gaussian")
-
-#summary(lasso_reg)
-
 ```
 
-According to the calculation and output of the code, we find that lambda is: 0.05123599 $log(\lambda)$ is -2.971313 when feature number is 4 (including the intercept.
-
-```{r 1.3.2,echo=FALSE,cache=TRUE}
+```{r 1.3.2,echo=FALSE, cache=TRUE}
 
 lambda_deg_freedom <- data.frame(lambda = lasso_reg$lambda,
                                  deg_freedom = lasso_reg$df)
@@ -124,30 +116,35 @@ lambda_deg_freedom <- lambda_deg_freedom %>% arrange(desc(deg_freedom))
 lambda_deg_freedom_num <- lambda_deg_freedom[which(lambda_deg_freedom$deg_freedom == 4),] %>% 
                         head(1) %>% pull(lambda)
 
-cat("lambda is ",lambda_deg_freedom_num,
-    " log(lambda) is ",log(lambda_deg_freedom_num),
-    "\nwhen feature number is 4 (including the intercept)\n")
+#cat("lambda is ",lambda_deg_freedom_num,
+#    " log(lambda) is ",log(lambda_deg_freedom_num),
+#    "\nwhen feature number is 4 (including the intercept)\n")
+```
 
+According to the calculation and output of the code, we find that when the feature number is 4 (including the intercept),
+lambda is: `r lambda_deg_freedom_num` and $log(\lambda)$ is `r log(lambda_deg_freedom_num)` .
+
+```{r 1.3.3,echo=FALSE, cache=TRUE}
 plot(lasso_reg, xvar="lambda", xlab='Log Lambda')
 abline(v=log(lambda_deg_freedom_num), col="red")
 ```
 
 ### (4)
 
-the cost function in ridge regression is:
+The cost function in ridge regression is:
 
 $$
 \hat{\theta} = argmin_{\theta} \frac{1}{n} || X\theta||^{2} + \lambda ||\theta||_{2}^{2}
 $$
 
-For ridge regression, we find that the degree of freedom always keep same when $log(\lambda)$ increase,
-but the coefficient of features seems to will converge to 0, but after check beta value of ridge_reg, we found 
-that the coefficient of features will not converge to 0, but will become a very small value.
+For ridge regression, we find that the degree of freedom always keeps the same when $log(\lambda)$ increases,
+but the coefficient of features seems to converge to 0, after checking the beta value of ridge_reg, we found 
+that the coefficient of features will not converge to 0, it will become a very small value.
 
-Compare to lasso regression, we can not find the required lambda value when degree of freedom is 4, since coefficient
-value not converge to 0, but converge to a very small value.
+Compared to lasso regression, we can not find the required lambda value when the degree of freedom is 4, since the coefficient
+value not converge to 0, but converges to a very small value as stated above.
 
-```{r 1.4,echo=FALSE,cache=TRUE}
+```{r 1.4,echo=FALSE, cache=TRUE}
 ######################  Assignment 1.4 #########################################
 # when alpha = 0, it is ridge regression
 ridge_reg <- glmnet(x_train, y_train, alpha = 0,family = "gaussian")
@@ -164,41 +161,59 @@ plot(ridge_reg,xvar="lambda", xlab='Log Lambda')
 ```
 
 ### (5)
-The plot as follows, when log(lambda) increase, CV score increase.
-Optimized lambda is -5.39019, and in this case, around 10 variables were chosen.
+The plot is as follows, when $log(\lambda)$ increases, features explaining the model get fewer, and the model becomes simpler.
 
-When lambda = -4, MSE is higher than when lambda=-5.39019. we can say that it results 
-in a statistically significantly better prediction.
+From the plot, we also find that when there are at least 9 features, the MSE is very stable and keeps at a lower level. 
+However, when $log(\lambda)$ increases, MSE increases rapidly until 3 features. It means those 9 features are significant.
 
-The scatter plot as follow.
-
-Since almost all points are around the 45-degree line,it indicate accurate predictions.
-
-```{r 1.5,warning=FALSE, cache=TRUE}
+```{r 1.5.1,echo=FALSE,out.height="250px", cache=TRUE,fig.align = 'center'}
 # when alpha = 1, it is lasso regression
-cv_lasso_model <- cv.glmnet(x, y_train, alpha = 1) 
-summary(cv_lasso_model)
-
-# Extract lambda values and CV scores
-lambda_values <- log(cv_lasso_model$lambda)
-cv_scores <- cv_lasso_model$cvm
+cv_lasso_model <- cv.glmnet(x_train, y_train, alpha = 1, family = "gaussian") 
 
 # Plot the dependence of CV score on log(lambda)
 plot(cv_lasso_model,xlab = "log lambda")
-plot(lambda_values, cv_scores, type = "b", xlab = "log lambda ", ylab = "CV Score",main = "CV Score vs log(lambda)")
+```
 
-min_cv_lambda <- log(cv_lasso_model$lambda.min)
-min_cv_score <- min(cv_scores)
-cat("min_cv_lambda is:",min_cv_lambda,"\n")
-points(min_cv_lambda, min_cv_score, col = "red", pch = 16, cex = 1.5)
-text(min_cv_lambda, min_cv_score, "Minimum CV Score", pos = 3, col = "red")
+```{r 1.5.2,echo=FALSE, cache=TRUE}
+# Extract lambda values and CV scores
+opt_lambda <- cv_lasso_model$lambda.min
+opt_features <- cv_lasso_model$nzero[which(cv_lasso_model$lambda == opt_lambda)]
 
-predictions <- predict(cv_lasso_model, newx = as.matrix(x_test), s = "lambda.min")
+#cat("Optimal log(lambda) is:",log(opt_lambda),"\n")
+#cat("Corresponding features used is:", opt_features,"\n")
+```
 
-plot(y_test, predictions, pch = 16, col = "red",
-     xlab = "Original Values", ylab = "Predicted  Values",
-     main = "Scatter Plot of Test Values for LASSO Model")
-abline(a = 0, b = 1, col = "blue", lty = 2)
+And optimized $\lambda$ is  `r opt_lambda` , $log(\lambda)$ is `r log(opt_lambda)`, in this case, `r opt_features` features were chosen.
+
+Compare the optimized $\lambda$ and corresponding $log(\lambda)$ with the $log(\lambda) = -4$, according to the plot, it's relatively flat in this range.
+So we can say that it does not indicate it's possible for $log(\lambda) = -4$ to get statistical significally better prediction.
+
+To compare the models, a scatter plot was used with different colors. 
+
+As we can see from the plot, the green dots(opt lasso) are closer to the original blue dots than the red dots(linear regression).
+
+This means the linear regression model is not as good as the opt lasso model in this case. 
+
+When Fat(<10) is small, linear regression fits well, when Fat gets bigger, linear regression fit points have a big gap with the original data. 
+However, the opt lasso model fits well in all the ranges. So regularization used in lasso helps to improve the model.
+
+```{r 1.5.3,echo=FALSE,fig.align = 'center'}
+x_test <- as.matrix(test_data_set %>% select(-Fat))
+y_test <- as.matrix(test_data_set %>% select(Fat))
+
+opt_lasso_model <- glmnet(x_train, y_train, alpha = 1, family = "gaussian", lambda = opt_lambda)
+opt_lasso_prediction <- predict(opt_lasso_model, 'response', newx = x_test)
+
+test_len <- length(y_test)
+scatter_df = data.frame(
+              x = rep(y_test, 3),
+              y = c(y_test, predicted_fat_test, opt_lasso_prediction),
+              Model = rep(c("Original","Linear Regression","Opt Lasso"), each = test_len)
+            )
+ggplot(scatter_df, aes(x = x, y = y, color = Model)) +
+  geom_point() +
+  labs(title = "Scatter Plot with Three Sets of Data", x = "Fat", y = "Predicted Value")  + 
+  scale_color_discrete(name="") 
 ```
 
 ## Assignment 2: Decision trees and logistic regression for bank marketing
@@ -208,29 +223,39 @@ abline(a = 0, b = 1, col = "blue", lty = 2)
 ```{r setup2, include=FALSE}
 ###########################  Init code For  Assignment 1 #######################
 rm(list = ls())
-
 ```
 
-### (1)
-```{r 2.1, cache=TRUE}
+### (1) Divide the data
+
+Please check the appendix for the code 
+
+```{r 2.1,echo=FALSE}
 ######################  Assignment 2.1 #########################################
-# read data
+
+
+# Read data
 data <- read.csv("bank-full.csv",header = TRUE, sep = ";")
+
+# remove the duration column
+data <- data %>% select(-duration)
+
+# convert categorical variables to factors
+data <- data %>% mutate_if(is.character, as.factor)
 
 row_num <- nrow(data)
 cols_num <- ncol(data)
 
-# set data split ratio to 0.4, 0.3, 0.3
+# Set data split ratio to 0.4, 0.3, 0.3
 ratio <- c(train = .4, validate = 0.3, test = .3)
 
-# set random seed
+# Set random seed
 set.seed(12345)
 
-# split data to training,validate and test dataset
+# Split data to train, validate and test
 train_id <- sample(1:row_num, floor(row_num * ratio[1]))
 train_set <- data[train_id, ]
 
-# set random seed
+# Set random seed
 set.seed(12345)
 
 validation_test_id <- setdiff(1:row_num, train_id)
@@ -239,115 +264,158 @@ validation_set <- data[validation_id, ]
 
 test_id <- setdiff(validation_test_id, validation_id)
 test_set <- data[test_id, ]
-
 ```
 
 ### (2)
 
-Decision trees are as follows.
+The following is the default tree.
 
-misclassification is listed below.
-
-||misclassification rate of train|misclassification rate of validation|
-|:-:|:-:|:-:|
-|a|0.0995355|0.0995355|
-|b|0.1142446|0.1207697|
-|c|0.06287326|0.1041805|
-
-According to the data in the table above, the first one has a good misclassification rate of train and validation.
-the last one has a good misclassification rate of train but a  little bit large  misclassification rate on validation set. b will not be considered, since both of values are biggest among 3 methods.
-
-```{r 2.2, cache=TRUE}
+```{r 2.2.1,echo=FALSE,out.height="150px", fig.align = 'center'}
 ######################  Assignment 2.2 #########################################
-tree_a <- rpart(y ~ ., data = train_set, method = "class")
-tree_b <- rpart(y ~ ., data = train_set, method = "class", control = rpart.control(minbucket = 7000))
-tree_c <- rpart(y ~ ., data = train_set, method = "class", control = rpart.control(cp = 0.0005))
 
-train_predictions_a <- predict(tree_a, train_set, type = "class")
-validation_predictions_a <- predict(tree_a, validation_set, type = "class")
-
-train_predictions_b <- predict(tree_b, train_set, type = "class")
-validation_predictions_b <- predict(tree_b, validation_set, type = "class")
-
-train_predictions_c <- predict(tree_c, train_set, type = "class")
-validation_predictions_c <- predict(tree_c, validation_set, type = "class")
-
-# misclassification rates
-train_misclassification_rate_a <- mean(train_predictions_a != train_set$y)
-validation_misclassification_rate_a <- mean(validation_predictions_a != validation_set$y)
-
-train_misclassification_rate_b <- mean(train_predictions_b != train_set$y)
-validation_misclassification_rate_b <- mean(validation_predictions_b != validation_set$y)
-
-train_misclassification_rate_c <- mean(train_predictions_c != train_set$y)
-validation_misclassification_rate_c <- mean(validation_predictions_c != validation_set$y)
-
-
-
-cat("train_misclassification_rate_a is ",train_misclassification_rate_a,"\n")
-cat("validation_misclassification_rate_a is ",validation_misclassification_rate_a,"\n")
-
-cat("train_misclassification_rate_b is ",train_misclassification_rate_b,"\n")
-cat("validation_misclassification_rate_b is ",validation_misclassification_rate_b,"\n")
-
-cat("train_misclassification_rate_c is ",train_misclassification_rate_c,"\n")
-cat("validation_misclassification_rate_c is ",validation_misclassification_rate_c,"\n")
-
-rpart.plot(tree_a)
-rpart.plot(tree_b)
-rpart.plot(tree_c)
+# default fit
+tree_a <- tree(y ~ ., data = train_set)
+plot(tree_a,type = "uniform",main = "default fit")
 ```
+
+Following is the tree with minimal node size = 7000.
+
+```{r 2.2.2,echo=FALSE,out.height="150px",fig.align = 'center'}
+# min node size = 7000
+tree_b <- tree(y ~ ., 
+               data = train_set, 
+               control = tree.control(nobs = nrow(train_set), minsize = 7000), 
+               split = c("deviance","gini"))
+plot(tree_b,type = "uniform",main = "min node size = 7000")
+```
+
+Following is the tree with mindev = 0.0005.
+
+```{r 2.2.3,echo=FALSE,out.height="150px",fig.align = 'center'}
+# min deviance = 0.0005
+tree_c <- tree(y ~ ., 
+               data = train_set, 
+               control = tree.control(nobs = nrow(train_set), mindev = 0.0005), 
+               split = c("deviance","gini"))
+plot(tree_c,type = "uniform",main = "min deviance = 0.0005")
+
+```
+
+```{r 2.2.4, echo=FALSE}
+calc_misclassification_error <- function(A,B){
+  return(1-sum(diag(table(A,B) ))/ length(A))
+}
+
+calc_misclassification_rate <- function(tree_model,dataset){
+  predictions <- predict(object = tree_model, newdata=dataset)
+  
+  maxIndex <- apply(predictions, 1, which.max)
+  prediction_tree_calc <- levels(dataset$y)[maxIndex] 
+  data_set_misclassification_rate <- calc_misclassification_error(dataset$y,prediction_tree_calc)
+  info <- paste("misclass rate of ",as.character(substitute(tree_model))," and ", 
+             as.character(substitute(dataset)) ," is ",data_set_misclassification_rate,"")
+  misclassifications <<- c(misclassifications,info)
+}
+
+misclassifications <- c()
+
+calc_misclassification_rate(tree_a,train_set)
+calc_misclassification_rate(tree_a,validation_set)
+calc_misclassification_rate(tree_b,train_set)
+calc_misclassification_rate(tree_b,validation_set)
+calc_misclassification_rate(tree_c,train_set)
+calc_misclassification_rate(tree_c,validation_set)
+
+for (i in 1:6){
+  print(misclassifications[i])
+}
+
+```
+Misclassifications for different trees and datasets are listed above.
+
+According to the misclassification rates and the plots, we can say that Tree B is the best choice, it has the same value as Tree A but is simpler than Tree A and much simpler than Tree C.
+
+According to the information given, we know that a large node size allows leaf nodes to have more observations which will lead to fewer splits, resulting in a smaller tree. 
+
+A smaller deviance, however, allows the tree to be more flexible which leads to trees with many branches and leaves.
+
 
 ### (3)
 
-```{r 2.3, cache=TRUE}
-######################  Assignment 2.3 #########################################
-# Set folds number
-num_folds <- 5
-cv_inds <- cut(seq(1, nrow(train_set)), breaks = num_folds, labels = FALSE)
-cv_errors <- numeric(30)
-train_deviances_depth <- numeric(30)
-validation_deviances_depth <- numeric(30)
+```{r 2.3.1,echo=FALSE, cache=TRUE,fig.align = 'center'}
+optimal_depth <- cv.tree(tree_c)
 
-for (depth in 1:30) {  
-  tree <- rpart(y ~ ., data = train_set, method = "class", 
-  control = rpart.control(cp = 0.0005), maxdepth = depth)
-        
-  validation_predictions <- predict(tree, validation_set, type = "class")
-    
-  cv_errors_depth <- mean(validation_predictions != validation_set$y)
-    
-  cv_errors[depth] <- cv_errors_depth
+training_score<- rep(1,50)
+validation_score <- rep(1,50)
 
-  train_deviances_depth[depth] <- sum(deviance(tree))
-  validation_deviances_depth[depth] <- sum(deviance(tree, newdata = validation_set))
+prune_df <- data.frame(matrix(ncol = 3,nrow = 0))
+colnames(prune_df) <- c("Leaves","Train_Deviance","Validation_Deviance")
+
+# from 2 because 'predict' will have an error complaining about applied 
+# to an object of class "singlenode"
+for(i in 2:50){
+  opt_tree_prune <- prune.tree(tree_c,best = i)
+  pred_valid <- predict(opt_tree_prune,
+                        newdata = validation_set,
+                        type = "tree")
+
+  training_score[i] <- deviance(opt_tree_prune)
+  validation_score[i] <- deviance(pred_valid)                      
+
+  prune_df <- rbind(  
+                      prune_df,
+                      data.frame(
+                        'Leaves' = i,
+                        'Train_Deviance' = training_score[i],
+                        'Validation_Deviance' = validation_score[i] 
+                      )
+                    )
 }
 
-optimal_depth <- which.min(cv_errors)
-cat("Optimal tree depth:", optimal_depth, "\n")
-
-plot_data <- data.frame(Leaves = 1:30, Train_Deviance = train_deviances_depth, 
-Validation_Deviance = validation_deviances_depth)
-
-ggplot(plot_data, aes(x = Leaves)) +
-  geom_line(aes(y = Train_Deviance, color = "Training Data"), size = 1) +
-  geom_line(aes(y = Validation_Deviance, color = "Validation Data"), size = 1) +
+# plot the dependence of deviances on training and validation data vs the number of leaves
+ggplot(data = prune_df, aes(x = Leaves)) +
+  geom_point(aes(y = Train_Deviance, color = "Training Deviance"), size = 1) +
+  geom_point(aes(y = Validation_Deviance, color = "Validation Deviance"), size = 1) +
   labs(title = "Dependence of Deviances vs the Number of Leaves",
        x = "Number of Leaves",
        y = "Deviance") +
-  scale_color_manual(values = c("Training Data" = "blue", "Validation Data" = "red"))
+  scale_color_discrete(name="") 
+
 ```
+
+The above is the plot for the number of leaves vs deviance of training and validation data.
+
+From the graph, we can see that when the number of leaves grows, the training deviance decreases, while the validation deviance decreases but then at around 20, it begins to grow.
+
+That means on the left side of that point, the model training and validation data both fit well, but on the right side of that point, the validation data does not fit well.
+
+```{r 2.3.2,echo=FALSE}
+optimal_leaves <- prune_df[which.min(prune_df$Validation_Deviance),1]
+```
+
+The optimal point according to the output of the code, is `r optimal_leaves`.
+
+We draw the tree based on the optimal number of leaves `r optimal_leaves`, followed by a summary of this tree.
+
+```{r 2.3.4,echo=FALSE,fig.align = 'center'}
+opt_tree_with_optimal_leaves <- prune.tree(tree_c,best = optimal_leaves) 
+plot(opt_tree_with_optimal_leaves,type = "uniform",main = "tree with optimal leaves")
+summary(opt_tree_with_optimal_leaves)
+```
+According to the output, we know that the variances that are very important in the decision tree are:
+
+$\textbf{poutcome, month, contact, pdays, age, day, balance, housing, job}$
+
 
 ### (4)
-An optimized tree depth = 1.
-```{r 2.4.1, cache=TRUE}
+
+We calculate the 
+```{r 2.4.1,eval=FALSE}
 ######################  Assignment 2.4 #########################################
-final_tree <- rpart(y ~ ., data = train_set, method = "class", 
-control = rpart.control(cp = 0.0005), maxdepth = 1)
 
 ```
 
-```{r 2.4.2,eval=FALSE, cache=TRUE}
+```{r 2.4.2,eval=FALSE, cache=TRUE,}
 validation_predictions <- predict(final_tree, validation_set, type = "class")
 
 conf_matrix <- confusionMatrix(validation_predictions, validation_set$y)
@@ -365,7 +433,7 @@ cat("F1 Score:", f1_score, "\n")
 
 ### (5)
 
-```{r 2.5, cache=TRUE}
+```{r 2.5, cache=TRUE,eval=FALSE}
 ######################  Assignment 2.5 #########################################
 loss_matrix <- matrix(c(0, 1, 5, 0), nrow = 2)
 test_predictions <- predict(final_tree, test_set, type = "class", parms = list(loss = loss_matrix))
@@ -376,7 +444,7 @@ print(conf_matrix)
 ```
 
 ### (6)
-```{r 2.6,eval=FALSE, cache=TRUE}
+```{r 2.6,eval=FALSE, cache=TRUE,eval=FALSE}
 ######################  Assignment 2.6 #########################################
 threshold <- 0.05  
 logistic_model <- glm(y ~ ., data = train_set, family = "binomial")
