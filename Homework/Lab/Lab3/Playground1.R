@@ -1,93 +1,83 @@
-In this assignment, we will try to predict the temp of Linköping station on date 2000-12-26.
-
-###########################  Init code For Assignment 1 ########################
 rm(list = ls())
 knitr::opts_chunk$set(echo = TRUE)
 library(geosphere)
 set.seed(1234567890)
 
-############################ init data ######################################
-stations <- read.csv("./Homework/Lab/Lab3/stations.csv", fileEncoding = "latin1")
-temps <- read.csv("./Homework/Lab/Lab3/temps50k.csv")
+stations <- read.csv("stations.csv", fileEncoding = "latin1")
+temps <- read.csv("temps50k.csv")
 st <- merge(stations, temps, by = "station_number")
 
-# define date of interest
-date_interest <- as.Date("2000-12-26")
+date_interest <- as.Date("1980-1-1")
 
-# filter out data which is later than data of interest 
-st$date <- as.Date(st$date)
-old_sf <- st #for later use
-st <- st[-which(difftime(date_interest, st$date) <= 0),]
+# Point to predict(Linköping University Valla Campus Geo Location)
+a <- 58.3986
+b <- 15.5780
 
-# define station of interest to Linköping
-station_row <- which(stations$station_name == "Linköping") 
-station <- stations$station_name[station_row] 
-
-# split the data to train and test (70/30)
-n <- dim(st)[1]
-id <- sample(1:n, floor(n * 0.7))
-train <- st[id, ]
-test <- st[-id, ]
-
-######################### Kernel Code  #####################################
-# Gaussian kernel of geo distance
-geo_distance <- function(data, location_interest, h_dist) {
-  location <- data.frame(longitude = data$longitude,
-                         latitude  = data$latitude)
-  distances <- distHaversine(location_interest,location)
-  kernel_result <- exp(-(distances)^2 / (2 * h_dist^2))
-  return(c(distances, kernel_result))
-}
-
-# Gaussian kernel of day distance
-day_distance <- function(data, day_interest, h_day) {
-  distances <- as.numeric(difftime(day_interest,data, 
-                          units = "days"))
-  kernel_result <- exp(-(distances)^2 / (2 * h_day^2))
-  return(c(distances, kernel_result))
-}
-
-# Gaussian kernel of hour distance
-hour_distance <- function(data, hour_interest, h_hour) {
-  
-  diff <- sapply(1:length(hour_interest), function(x){
-              abs(as.numeric(difftime(strptime(hour_interest[x], "%H:%M:%S"), 
-                                      strptime(data$time, "%H:%M:%S")), units="hours"))
-  })
-  
-  distances <- ifelse(diff <= 12, diff, 24-diff)
-  kernel_result <- exp(-(distances)^2 / (2 * h_day^2))
-  return(kernel_result)
-}
-
-################################ 1.1 Distance Kernel ###########################
-
-# These three values are up to the students
-h_distance <- 100000
-
-# set coordinates to predict(Linköping)
-a <- stations$longitude[station_row]
-b <- stations$latitude[station_row]
-
-N <- nrow(train)
-i <- 1:N
-k_distance <- sapply(i, function(i){geo_distance(train[i, ], c(a, b), h_distance)})
-plot(k_distance[1,], k_distance[2,], main = "Distance Gaussian Kernel", xlab = "Distance", ylab = "K")
-
-################################ 1.2 Day Kernel ###############################
-h_day <- 20
-k_day <- sapply(i, function(i) day_distance(as.Date(train$date[i]), date_interest, h_day))
-plot(k_day[1,], k_day[2,], main = "Day Gaussian Kernel", xlab = "Days", ylab = "K")
-
-h_hour <- 7
-
-# Get the time format we want
+# other parameters
+# distance unit is KM
+h_distance <- 200
+h_date <- 10
+h_time <- 2
+# It will generate a sequence of time from 4:00:00 to 24:00:00 with a step of 2 hours
 times_interest <- c(paste0("0",seq(4,8,by=2),":00:00"), paste0(seq(10,24,by=2),":00:00"))
 
-k_hour <- sapply(i, function(i) hour_distance(train[i,], times_interest, h_hour))
+kernel_prediction <- function(h_distance, h_date, h_time, a, b, date, times){
 
-predicted_temp <- sapply(1:length(times_interest), function(x) 
-        sum((k_distance[2,] + k_day[2,] + k_hour[x,]) * train$air_temperature)/ sum(k_distance[2,], k_day[2,], k_hour[x,]))
+  distance_vector <- c()
+  distance_date_vector <- c()
+  distance_time_vector <- c()
 
-plot(seq(4,24,by=2),predicted_temp, type="l", main = "Temp in Linkoping", xlab = "Time", ylab = "Temp")
-################################ 1.5 Multi Kernel ###############################
+  kernel_distance_vector <- c()
+  kernel_date_distance_vector <- c()
+  kernel_time_distance_vector <- c()
+
+  pred_temp_sum  <- c()
+  pred_temp_mul <- c()
+  
+  for(i in 1:length(times)){
+  
+    # Filter out time that is later than data of interest 
+    filtered_st <- st[(st$date == date & st$time <= times[i]) | st$date < date,]
+    
+    # calaulate the distance between the point of interest and the weather station on filtered data
+    # Convert to KM
+    distances <- distHaversine(c(a, b), filtered_st[,c('latitude','longitude')]) / 1000
+    distance_vector <- c(distance_vector,distances)
+    kernel_distance <- exp(-(distances)^2 / (2 * h_distance^2))
+    kernel_data_distance_vector <- c(kernel_data_distance_vector,kernel_distance)
+
+    # calaulate the distance between the date of interest and the date on filtered data
+    date_diff <- abs(as.numeric(difftime(date, filtered_st$data, units = "days")))
+    distance_date_vector = c(distance_date_vector,date_diff)
+    kernel_date_distance <- exp(-(date_diff)^2 / (2 * h_date^2))
+    kernel_data_distance_vector <- c(kernel_data_distance_vector,kernel_date_distance)  
+
+    # calculate the distance between the time of interest and the time on filtered data
+    time_diff <- abs(as.numeric(difftime(
+                                  strptime(filtered_st$time, "%H:%M:%S"), 
+                                  strptime(times[i], "%H:%M:%S")), 
+                                  units="hours"))
+    distance_time_vector = c(distance_time_vector,time_diff)
+    kernel_time_distance <- exp(-(time_diff)^2 / (2 * h_time^2))
+    kernel_time_distance_vector <- c(kernel_time_distance_vector,kernel_time_distance)
+
+    # calculate the sum of 3 kernels
+    kernel_sum <- kernel_distance + kernel_date_distance + kernel_time_distance
+
+    # calculate the mul of 3 kernels
+    kernel_mul <- kernel_distance * kernel_date_distance * kernel_time_distance
+
+    # predict the temperature
+    predicted_temp_sum <- sum((kernel_sum * filtered_st$air_temperature) / sum(kernel_sum))
+    predicted_temp_mul <- sum((kernel_mul * filtered_st$air_temperature) / sum(kernel_mul))
+
+    pred_temp_sum <- c(pred_temp_sum,predicted_temp_sum)
+    pred_temp_mul <- c(pred_temp_mul,predicted_temp_mul)
+  }
+  return(list(pred_temp_sum,pred_temp_mul,
+              distance_vector,kernel_distance_vector,
+              distance_date_vector,kernel_date_distance_vector,
+              distance_time_vector,kernel_time_distance_vector))
+}
+
+kernel_result <- kernel_prediction(h_distance, h_date, h_time, a, b, date_interest, times_interest)

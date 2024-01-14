@@ -9,13 +9,20 @@ output:
     pdf_document
 ---
 
+
+## Statement of Contribution
+For Lab 3, we decided to split the three assignments equally, Qinyuan completed Assignment 1, Satya
+completed Assignment 2 and Daniele completed Assignment 3, after which, for verification's sake, we completed
+each other's assignments as well and validated our findings. The report was also compiled by three of us,
+with each handling their respective assignments.
+
 ## Assignment 1: KERNEL METHODS(Solved by Qinyuan Qi)
 
 ### Answer:
 
-In this assignment, we will try to predict the temp of Linköping station on date 1970-11-05.
+In this assignment, we will try to predict the temperature of Linköping University Valla Campus on the date 2010-1-1.
 
-```{r setup1, include=FALSE}
+```{r setup1, include=FALSE,cache=TRUE}
 ###########################  Init code For Assignment 1 ########################
 rm(list = ls())
 knitr::opts_chunk$set(echo = TRUE)
@@ -23,144 +30,160 @@ library(geosphere)
 set.seed(1234567890)
 ```
 
-```{r 1, echo=FALSE}
+```{r 1.0, echo=FALSE,cache=TRUE}
 ############################ init data ######################################
 stations <- read.csv("stations.csv", fileEncoding = "latin1")
 temps <- read.csv("temps50k.csv")
 st <- merge(stations, temps, by = "station_number")
-
-# define date of interest
-date_interest <- as.Date("1970-11-05")
-
-# filter out data which is later than data of interest 
-st$date <- as.Date(st$date)
-old_sf <- st #for later use
-st <- st[-which(difftime(date_interest, st$date) <= 0),]
-
-# define station of interest to Linköping
-station_row <- which(stations$station_name == "Linköping") 
-station <- stations$station_name[station_row] 
-
-# split the data to train and test (70/30)
-n <- dim(st)[1]
-id <- sample(1:n, floor(n * 0.7))
-train <- st[id, ]
-test <- st[-id, ]
 ```
 
-The 3 basic kernel functions are implemented as follows.
+We set the following parameters which will be used in our kernel functions.
 
-```{r 1.0}
-######################### Kernel Code  #####################################
-# Gaussian kernel of geo distance
-geo_distance <- function(data, location_interest, h_dist) {
-  location <- data.frame(longitude = data$longitude,
-                         latitude  = data$latitude)
-  distances <- distHaversine(location_interest,location)
-  kernel_result <- exp(-(distances)^2 / (2 * h_dist^2))
-  return(c(distances, kernel_result))
-}
+```{r 1.1,cache=TRUE}
+# define the date of interest
+date_interest <- as.Date("2010-1-1")
 
-# Gaussian kernel of day distance
-day_distance <- function(data, day_interest, h_day) {
-  distances <- as.numeric(difftime(day_interest,data, 
-                          units = "days"))
-  kernel_result <- exp(-(distances)^2 / (2 * h_day^2))
-  return(c(distances, kernel_result))
-}
+# Point to predict(Linköping University Valla Campus Geo Location)
+a <- 58.3986
+b <- 15.5780
 
-# Gaussian kernel of hour distance
-hour_distance <- function(data, hour_interest, h_hour) {
-  
-  diff <- sapply(1:length(hour_interest), function(x){
-              abs(as.numeric(difftime(strptime(hour_interest[x], "%H:%M:%S"), 
-                                      strptime(data$time, "%H:%M:%S")), units="hours"))
-  })
-  
-  distances <- ifelse(diff <= 12, diff, 24-diff)
-  kernel_result <- exp(-(distances)^2 / (2 * h_day^2))
-  return(kernel_result)
-}
-```
-
-We set h_distance=100000, and set station to Linköping, then we plot the kernel function  for distance as follows.
-
-```{r 1.1}
-################################ 1.1 Distance Kernel ###########################
-
-# These three values are up to the students
-h_distance <- 100000
-
-# set coordinates to predict(Linköping)
-a <- stations$longitude[station_row]
-b <- stations$latitude[station_row]
-
-N <- nrow(train)
-i <- 1:N
-k_distance <- sapply(i, function(i){geo_distance(train[i, ], c(a, b), h_distance)})
-plot(k_distance[1,], k_distance[2,], main = "Distance Gaussian Kernel", xlab = "Distance", ylab = "K")
-```
-
-We set h_day=20, then we plot the kernel function as follows.
-
-```{r 1.2}
-################################ 1.2 Day Kernel ###############################
-h_day <- 20
-k_day <- sapply(i, function(i) day_distance(as.Date(train$date[i]), date_interest, h_day))
-plot(k_day[1,], k_day[2,], main = "Day Gaussian Kernel", xlab = "Days", ylab = "K")
-```
-
-We set h_hour = 7.
-
-```{r 1.3}
-################################ 1.3 Hour Kernel ###############################
-
-h_hour <- 7
-
-# Get the time format we want
+# other parameters
+# distance unit is KM
+h_distance <- 100
+h_date <- 1000
+h_time <- 2
+# It will generate a sequence of time from 4:00:00 to 24:00:00 with a step of 2 hours
 times_interest <- c(paste0("0",seq(4,8,by=2),":00:00"), paste0(seq(10,24,by=2),":00:00"))
-
-k_hour <- sapply(i, function(i) hour_distance(train[i,], times_interest, h_hour))
 ```
 
-Now we setting up another new kernel(sum of 3 kernels), and plot the prediction value as follows.
+```{r 1.2, echo=FALSE,cache=TRUE}
+######################### Kernel Code  and function call #############################
 
-```{r 1.4} 
-################################ 1.4 Sum Kernel ###############################
-predicted_temp_sum <- sapply(1:length(times_interest), function(x) 
-        sum((k_distance[2,] + k_day[2,] + k_hour[x,]) * train$air_temperature)
-        / sum(k_distance[2,], k_day[2,], k_hour[x,]))
+# function to predict the temperature of a geo location in Sweden given data
+kernel_prediction <- function(h_distance, h_date, h_time, a, b, date, times){
 
-plot(seq(4,24,by=2),predicted_temp_sum, type="l", 
-main = "Temp in Linkoping(Sum)", xlab = "Time", ylab = "Temp")
+  distance_vector <- c()
+  distance_date_vector <- c()
+  distance_time_vector <- c()
+
+  kernel_distance_vector <- c()
+  kernel_date_distance_vector <- c()
+  kernel_time_distance_vector <- c()
+
+  pred_temp_sum  <- c()
+  pred_temp_mul <- c()
+  
+  for(i in 1:length(times)){
+  
+    # Filter out time that is later than data of interest 
+    filtered_st <- st[(st$date == date & st$time <= times[i]) | st$date < date,]
+    
+    # calaulate the distance between the point of interest and the weather station on filtered data
+    # Convert to KM
+    distances <- distHaversine(c(a, b), filtered_st[,c('latitude','longitude')]) / 1000
+    distance_vector <- c(distance_vector,distances)
+    kernel_distance <- exp(-(distances)^2 / (2 * h_distance^2))
+    kernel_distance_vector <- c(kernel_distance_vector,kernel_distance)
+
+    # calaulate the distance between the date of interest and the date on filtered data
+    date_diff <- abs(as.numeric(difftime(date, filtered_st$date, units = "days")))
+    distance_date_vector = c(distance_date_vector,date_diff)
+    kernel_date_distance <- exp(-(date_diff)^2 / (2 * h_date^2))
+    kernel_date_distance_vector <- c(kernel_date_distance_vector,kernel_date_distance)  
+
+    # calculate the distance between the time of interest and the time on filtered data
+    time_diff <- abs(as.numeric(difftime(
+                                  strptime(filtered_st$time, "%H:%M:%S"), 
+                                  strptime(times[i], "%H:%M:%S")), 
+                                  units="hours"))
+    distance_time_vector = c(distance_time_vector,time_diff)
+    kernel_time_distance <- exp(-(time_diff)^2 / (2 * h_time^2))
+    kernel_time_distance_vector <- c(kernel_time_distance_vector,kernel_time_distance)
+
+    # calculate the sum of 3 kernels
+    kernel_sum <- kernel_distance + kernel_date_distance + kernel_time_distance
+
+    # calculate the mul of 3 kernels
+    kernel_mul <- kernel_distance * kernel_date_distance * kernel_time_distance
+
+    # predict the temperature
+    predicted_temp_sum <- sum((kernel_sum * filtered_st$air_temperature) / sum(kernel_sum))
+    predicted_temp_mul <- sum((kernel_mul * filtered_st$air_temperature) / sum(kernel_mul))
+
+    pred_temp_sum <- c(pred_temp_sum,predicted_temp_sum)
+    pred_temp_mul <- c(pred_temp_mul,predicted_temp_mul)
+  }
+  return(list(pred_temp_sum,pred_temp_mul,
+              distance_vector,kernel_distance_vector,
+              distance_date_vector,kernel_date_distance_vector,
+              distance_time_vector,kernel_time_distance_vector))
+}
+
+kernel_result <- kernel_prediction(h_distance, h_date, h_time, a, b, date_interest, times_interest)
 
 ```
 
-Now we setting up another new kernel(mul of 3 kernels), and plot the prediction value as follows.
+```{r 1.3, echo=FALSE,cache=TRUE}
+################################ 1.3 plot #########################################
+# plot the distance vs kernel_distance
+plot(kernel_result[[3]],kernel_result[[4]],xlab="geo distance",
+     ylab="kernel_geo_distance",main="Geo distance vs kernel_distance")
 
-```{r 1.5} 
-################################ 1.5 Multi Kernel ###############################
-predicted_temp_mul <- sapply(1:length(times_interest), function(x) 
-        sum((k_distance[2,] * k_day[2,] * k_hour[x,]) * train$air_temperature)
-        / sum(k_distance[2,] * k_day[2,] * k_hour[x,]))
+# plot the date distance vs kernel_distance
+plot(kernel_result[[5]],kernel_result[[6]],xlab="date distance",
+     ylab="kernel_date_distance",main="date distance vs kernel_date_distance")
 
-plot(seq(4,24,by=2),predicted_temp_mul, type="l", 
-main = "Temp in Linkoping (Mul)", xlab = "Time", ylab = "Temp")
-
-
-
+# plot the time distance vs kernel_distance
+plot(kernel_result[[7]],kernel_result[[8]],xlab="time distance",
+     ylab="kernel_time_distance",main="time distance vs kernel_time_distance")
 ```
-Compare the sum and mul version of the kernel, we can see that there have around 1 degree difference. According to the real results, we found the following near Nov in Linköping.
 
-1962-10-09,18:00:00,9.6 / 1971-11-29,06:00:00,0 / 1975-11-06,12:00:00,10 / 1961-11-02,18:00:00,11 
+```{r 1.4, echo=FALSE,cache=TRUE}
+# predict the temperature using sum kernel
+pred_temp_sum <- kernel_result[[1]]
 
-It seems that the predictions still have some gaps near the real results.
+# predict the temperature using mul kernel
+pred_temp_mul <- kernel_result[[2]]
+
+# print out the predicted temperature of the sum kernel
+cat("The predicted temperature of the sum kernel:\n")
+pred_temp_sum
+
+# Print out the predicted temperature of mul kernel
+cat("The predicted temperature of the mul kernel:\n")
+pred_temp_mul
+```
+
+```{r 1.5, echo=FALSE,cache=TRUE}
+plot(seq(4,24,by=2),pred_temp_sum,type="o",xlab="time",ylim=c(-5,10),col="red", 
+     ylab="temperature",main="time vs temperature prediction")
+lines(seq(4,24,by=2),pred_temp_mul,type="o",col="blue")
+legend(x=13,y=0,
+      legend = c("sum kernel","mul kernel"),
+      col=c("red", "blue"),
+      lty=c(1,1))
+```
+
+Comparing the sum and mul versions of the kernel, we can see that there is around a 1~5 degree difference. mul version has a higher 
+temperature than the sum version. 
+
+According to the [History Web Data](https://www.timeanddate.com/weather/sweden/linkoping/), 
+we can find that the real temperature of Linköping on the date 2010-1-1(Monday) is 0 to -3 °C.
+And we checked the temperature of Linköping that week, after that day, 
+the temperature went down gradually, and reached -19 °C on 2010-1-6(Saturday).
+
+Then we checked the data in the temps50k.csv, and only found 19 records of the temperature of Linköping station(station id: 85250)
+which is not enough to predict the temperature of Linköping on the date 2010-1-1.
+This is the reason why the gap between the prediction and the real temperature existed.
+
+According to what we found, we cannot decide which version of the kernel is better, but both of
+them in an acceptable range.
 
 ## Assignment 2: SUPPORT VECTOR MACHINES(Solved by Satya Sai Naga Jaya Koushik Pilla)
 
 ### Answer:
 
-```{r setup2, include=FALSE}
+```{r setup2, include=FALSE,cache=TRUE}
 ###########################  Init code For Assignment 2 ########################
 rm(list = ls())
 knitr::opts_chunk$set(echo = TRUE)
@@ -168,9 +191,11 @@ library(kernlab)
 set.seed(1234567890)
 ```
 
-According to the code, we know that the spam data is splitted into training,validation,training+validation, and test data respectively.
+### 2.1. Which filter do we return to the user ? filter0, filter1, filter2 or filter3? Why?
 
-```{r 2.0, include=FALSE}
+After checking the code, we know that the spam data is split into training, validation, training+validation, and test data respectively.
+
+```{r 2.0, include=FALSE,cache=TRUE}
 ###########################  Load Data and split data sets #####################
 data(spam)
 foo <- sample(nrow(spam))
@@ -180,10 +205,11 @@ tr <- spam[1:3000, ]
 va <- spam[3001:3800, ]
 trva <- spam[1:3800, ]
 te <- spam[3801:4601, ] 
-```
 
-According to the code output, we know that the minimal error is 0.0675 when C = 0.3.
-```{r 2.1.1,echo=FALSE}
+```
+The error rate rates of 4 filters are as follows.
+
+```{r 2.1.1,echo=FALSE,cache=TRUE}
 ###########################  Get error va and corresponding C #####################
 by <- 0.3
 err_va <- NULL
@@ -194,82 +220,81 @@ for(i in seq(by,5,by)){
   err_va <-c(err_va,(t[1,2]+t[2,1])/sum(t))
 }
 
-cat("minimal error =", min(err_va), " when C =", which.min(err_va) * by,"\n")
-```
-Also we draw the plot of error_va versus C as follows.
-
-```{r 2.1.2,fig.height=4,echo=FALSE}
-###########################  Plot err_va vs C #####################
-c_plot <- seq(by, 5, by)
-plot(x = c_plot, y = err_va, type = "p",xlab = "C", ylab = "error_va", main = "err_va vs C")
+c1 <- which.min(err_va)
 
 ```
 
-
-
-```{r 2.1.3,echo=FALSE}
-filter0 <- ksvm(type~.,data=tr,kernel="rbfdot",kpar=list(sigma=0.05),C=which.min(err_va)*by,scaled=FALSE)
+```{r 2.1.3,echo=FALSE,cache=TRUE}
+filter0 <- ksvm(type~.,data=tr,kernel="rbfdot",
+               kpar=list(sigma=0.05),C=which.min(err_va)*by,scaled=FALSE)
 mailtype <- predict(filter0,va[,-58])
 t <- table(mailtype,va[,58])
 err0 <- (t[1,2]+t[2,1])/sum(t)
 
-filter1 <- ksvm(type~.,data=tr,kernel="rbfdot",kpar=list(sigma=0.05),C=which.min(err_va)*by,scaled=FALSE)
+filter1 <- ksvm(type~.,data=tr,kernel="rbfdot",
+                kpar=list(sigma=0.05),C=which.min(err_va)*by,scaled=FALSE)
 mailtype <- predict(filter1,te[,-58])
 t <- table(mailtype,te[,58])
 err1 <- (t[1,2]+t[2,1])/sum(t)
 
-filter2 <- ksvm(type~.,data=trva,kernel="rbfdot",kpar=list(sigma=0.05),C=which.min(err_va)*by,scaled=FALSE)
+filter2 <- ksvm(type~.,data=trva,kernel="rbfdot",
+                kpar=list(sigma=0.05),C=which.min(err_va)*by,scaled=FALSE)
 mailtype <- predict(filter2,te[,-58])
 t <- table(mailtype,te[,58])
 err2 <- (t[1,2]+t[2,1])/sum(t)
 
 
-filter3 <- ksvm(type~.,data=spam,kernel="rbfdot",kpar=list(sigma=0.05),C=which.min(err_va)*by,scaled=FALSE)
+filter3 <- ksvm(type~.,data=spam,kernel="rbfdot",
+                kpar=list(sigma=0.05),C=which.min(err_va)*by,scaled=FALSE)
 mailtype <- predict(filter3,te[,-58])
 t <- table(mailtype,te[,58])
 err3 <- (t[1,2]+t[2,1])/sum(t)
 
-#cat("accuracy of filter0 is", (1-err0)*100,"%\n")
-#cat("accuracy of filter1 is", (1-err1)*100,"%\n")
-#cat("accuracy of filter2 is", (1-err2)*100,"%\n")
-#cat("accuracy of filter3 is", (1-err3)*100,"%\n")
+cat("error rate of filter0 is", (err0)*100,"%\n")
+cat("error rate of filter1 is", (err1)*100,"%\n")
+cat("error rate of filter2 is", (err2)*100,"%\n")
+cat("error rate of filter3 is", (err3)*100,"%\n")
 ```
 
-### 2.1. Which filter do we return to the user ? filter0, filter1, filter2 or filter3? Why?
+Here, Filter 0 and Filter 1 are almost the same, both of them training on the training data, 
+the only difference is Filter 0 predicted on validation data, and Filter 1 predicted on test data.
 
-Then we calc the error rate of 4 filters, accoring to this, we know the accuracy rates are as follows.
+While Filter2 training on training+validation data predicated on test data, and 
+Filter3 training on all data, and predicted on test data.
 
-| Filter | Accuracy | Accept / Reject | 
-|:-:|:-:|:-:|
-| filter0 | 93.25 % | Accept | 
-Filter0 follow the best practice and get the highest accuracy rate. It train on training data,it predict on validation data
+Regarding which filter we should return to the user. I think it should be Filter 1.
+Or we can use Filter 0 since both validation and test data are not touched by the model which can be swapped.
 
-| Filter | Accuracy | Accept / Reject | 
-|:-:|:-:|:-:|
-| filter1 | 91.51061 % | Reject |  |
-Filter1 follow the best practice but its accuracy rate is lower than filter 0. It train on training data,it predict on test  data
+In Filter 1, we train the model using training data and then adjust the hyperparameter(C) using validation data, 
+and predict on test data which is a best practice in the machine learning field.
 
-| Filter | Accuracy | Accept / Reject | 
-|:-:|:-:|:-:|
-| filter2 | 91.7603 % | Reject | 
-Filter2 does not follow the best practice but still practiciable, It train on training+validation data, predict on test data, also its accuracy rate is lower than filter 0.
+The problem with Filter 2 is it trains the model on training+validation data, which makes it impossible to find 
+new data to adjust the hyperparameter(C).
 
-| Filter | Accuracy | Accept / Reject | 
-|:-:|:-:|:-:|
-| filter3 | 97.87765 % | Reject |
-Filter3 training on all data,and using the seen data to predict which is not accepetable.
+The problem with Filter 3 is it trains the model on all data, which means the test data is touched by the training process.
 
-Based on the analysis above, we should return filter0 to the user.
+Since C is calculated at first which is based on the training data, to use filter 2, we need to recalculate C based on training+validation data.
+
+```{r 2.1.2,echo=FALSE, cache=TRUE}
+err_va <- NULL
+for(i in seq(by,5,by)){
+  filter <- ksvm(type~.,data=trva,kernel="rbfdot",kpar=list(sigma=0.05),C=i,scaled=FALSE)
+  mailtype <- predict(filter,te[,-58])
+  t <- table(mailtype,te[,58])
+  err_va <-c(err_va,(t[1,2]+t[2,1])/sum(t))
+}
+
+c2 <- which.min(err_va)
+
+cat("C based on Tr + Va is ", c1*by,"\n")
+cat("C based on TrVa + Te is", c2*by,"\n")
+```
 
 ### 2.2 What is the estimate of the generalization error of the filter returned to the user? err0, err1, err2 or err3? Why?
 
-Generalization error is the expectation of the the predicted values of an independent test set on our model. 
+Generalization error is the expectation of the predicted values of an independent test set on our model. 
 
-Based on the test data, we got the following result.
-
-The reason why filter0 and filter1 are same is because these 2 filters share the same parameters and are same.
-
-```{r 2.2,echo=FALSE}
+```{r 2.2,echo=FALSE,cache=TRUE}
 filter0_pred <- predict(filter0, te, type = "response")
 filter0_gerr <- mean(filter0_pred != te[, 58])
 
@@ -287,38 +312,52 @@ cat("generalization error of filter1 is", filter1_gerr*100,"%\n")
 cat("generalization error of filter2 is", filter2_gerr*100,"%\n")
 cat("generalization error of filter3 is", filter3_gerr*100,"%\n")
 ```
+Same as what has been discussed in 2.1, err1 should be returned to the user 
+which means we trained using training data, found C using validation data, and predicted on test data.
 
 ### 2.3 Implementation of SVM predictions.
 
-The missing code implemented as follows.
+Please check the appendix for the implementation of the missing code.
 
-```{r 2.3}
+```{r 2.3, echo=FALSE, cache=TRUE}
 sv <- alphaindex(filter3)[[1]]
 co<-coef(filter3)[[1]]
 inte<- - b(filter3)
 # RBF kernel with sigma = 0.05
 rbf <- rbfdot(sigma = 0.05) 
-k<-NULL
+
+pred <- c()
+
 # We produce predictions for just the first 10 points in the dataset.
-for(i in 1:10){ 
-  k2<-NULL
+for(i in 1:10){   
+  k <- c()  
   for(j in 1:length(sv)){
-    k2 <- k2 + co[j] * rbf(as.numeric(spam[sv[j], -58]),
-                           as.numeric(spam[i, -58]))
+    x <- as.vector(unlist(spam[i, -58])) # test data
+    y <- as.vector(unlist(spam[sv[j], -58])) # support vector
+    k <- c(k, rbf(x, y))    
   }
-  k<-c(k,  k2 + inte)
+  pred<-c(pred, (k %*% co) + inte)
 }
-k
-pred_filter3 <- predict(filter3,spam[1:10,-58], type = "decision")
-pred_filter3
+
+pred_using_func <- as.vector(predict(filter3, spam[1:10,-58], type = "decision"))
+
+cat("Calculated Prediction is:")
+pred
+
+cat("Predicted using Predict is:")
+pred_using_func
+
+cat("Are both predictions equal?")
+all.equal(pred, pred_using_func)
 ```
+
 
 
 ## Assignment 3: NEURAL NETWORKS(Solved by Daniele	Bozzoli)
 
 ### Answer:
 
-```{r setup3, include=FALSE}
+```{r setup3, include=FALSE,cache=TRUE}
 ###########################  Init code For Assignment 3 ########################
 rm(list = ls())
 knitr::opts_chunk$set(echo = TRUE)
@@ -328,11 +367,11 @@ set.seed(1234567890)
 
 ### 3.1 
 
-We observe in the plot that the predictions using neural network seem to be good predictions for the sine function.
+We observe in the plot that the predictions using neural networks seem to be good predictions for the sine function.
 
-Since this function is differentiable, it will also provide a smooth gradient.
+Since this function is differentiable, it also provides a smooth gradient.
 
-```{r 3.1}
+```{r 3.1,echo=FALSE}
 ###########################  3.1 ################################################
 rand_var <- runif(500, 0, 10)
 df <- data.frame(rand_var, Sin=sin(rand_var))
@@ -341,7 +380,7 @@ test <- df[26:500,] # Test
 
 # Random initialization of the weights in the interval [-1, 1]
 winit <- runif(31, -1, 1)
-nn <- neuralnet(data = train, formula = Sin ~ rand_var, hidden = c(10))
+nn <- neuralnet(data = train, formula = Sin ~ rand_var, hidden = c(10), startweights = winit)
 
 # Plot of the training data (black), test data (blue), and predictions (red)
 plot(train,  col = "black", cex=1, main="Default")
@@ -353,9 +392,9 @@ legend(x = 6.5, y = -0.6, legend = c("Training data", "Test data",
 
 ### 3.2 
 
-First of all, we define linear activation function as follows. According to the plot, we can see that the prediction is a straight line compared to the train and test data which shows a sine wave.
+We define the linear activation function $f(x) = x$. According to the plot, we can see that the prediction is a straight line compared to the train and test data which shows a sine wave.
 
-```{r 3.2.1}
+```{r 3.2.1,echo=FALSE,cache=TRUE}
 ###########################  3.2.1 Linear #######################################
 
 #Linear
@@ -374,21 +413,20 @@ legend(x = 6.5, y = -0.6, legend = c("Training data", "Test data",
 
 ```
 
-Then we define ReLU activation function as follows, we use ifelse to define the function since max(0,x) not working here.
+Then we define ReLU activation function $f(x) = ifelse(x>=0,x,0)$. We use ifelse to define the function since max(0,x) not working here.
 
-As what can be seen in the plot, ReLU function as an activation function do not provide good results on test data.
+As can be seen in the plot, ReLU function as an activation function does not provide good results on test data.
 
-The right prediction range only in around(0.5,4) . when random variable in range (4,10),  it shows a straight line as what we see in linear activation function.
+The right prediction range is only around(0.5,4). when a random variable is in range (4,10),  
+it shows a straight line as what we see in the linear activation function.
 
-```{r 3.2.2, error=TRUE}
+```{r 3.2.2, echo=FALSE,cache=TRUE}
 ###########################  3.2.2 Relu #######################################
-
 #ReLU
 h2 <- function(x) {
   # max(0,x) not working
   ifelse(x>=0,x,0)
 }
-
 
 nn2 <- neuralnet(formula = Sin ~ rand_var, data = train, hidden = 10,
 startweights = winit, act.fct = h2)
@@ -399,12 +437,12 @@ points(test, col = "blue", cex=1)
 points(test[,1], predict(nn2,test), col="red", cex=1)
 legend(x = 6.5, y = -0.6, legend = c("Training data", "Test data",
 "Pred"), col = c("black", "blue", "red"), cex = 0.7,pch = 1)
-
 ```
 
-Last we define Softplus activation function as follows, as what can be seen in the plot, Softplus function as an activation function provide good results on test data.
+Last we define Softplus activation function $f(x) = log(1+exp(x))$, as can be seen in the plot, 
+the Softplus function as an activation function provides good results on test data.
 
-```{r 3.2.3}
+```{r 3.2.3,echo = FALSE,cache=TRUE}
 ###########################  3.2.3 Softplus #######################################
 
 #Softplus
@@ -427,25 +465,33 @@ legend(x = 6.5, y = -0.6, legend = c("Training data", "Test data",
 
 ### 3.3
 
-The code is as follows. When random in range (0,10), the prediction is match the test data, when it is greater than 10, the prediction begin to get smaller and eventually convergeing to a value which is around -3.
+The code is as follows. When random in range (0,10), the prediction matches the test data, 
+when it is greater than 10, the prediction begins to get smaller and eventually converges to a value that is around -11.
 
-```{r 3.3}
+```{r 3.3,echo=FALSE,cache=TRUE}
 ###########################  3.3  #######################################
 # Sample 500 points
 set.seed(1234567890)
 rand_var <- runif(500, min = 0, max = 50) 
 df <- data.frame(rand_var, Sin = sin(rand_var))
-plot(train, cex = 2, xlim = c(0, 50), ylim = c(-6, 2))
+
+plot(train, cex = 2, xlim = c(0,50), ylim = c(-12, 2))
 points(df, col = "blue", cex = 1)
 points(df[, 1], predict(nn, df), col = "red", cex = 1)
-plot(nn)
+abline(v = 10, col = "green")
 ```
 
 ### 3.4
-We define the following code to get the value of the convergence.
-by setting a relativ big value 100, we can calculate the approximation value of the convergence around -3.105391.
+We define the sigmoid as $f(x) = (1 / (1 + exp(-x)))$ .
+by setting a relatively big value of 100, we can calculate the approximation value of the convergence to -11.00524.
 
-```{r 3.4}
+It's because the original neural network is training on the sample data in the range of (0,10), 
+when the test data is smaller than 10, the prediction looks good, 
+but when the test data is greater than 10,
+the prediction will not match the test data.
+To Solve this problem, we can train the neural network on a bigger range of data.
+
+```{r 3.4,echo=FALSE,cache=TRUE}
 ###########################  3.4  #######################################
 
 sigmoid <- function(x){
@@ -460,29 +506,28 @@ sigmoid_val <- sigmoid(weight_1 * 100 + bias_1)
 bias_2 <- nn$weights[[1]][[2]][1,]
 weight_2 <- nn$weights[[1]][[2]][2:11,]
 cat("The value will converge to:", weight_2 %*% sigmoid_val + bias_2, "\n")
-
 ```
 
 ### 3.5
-The code as follows.
+We can see that the prediction is not good, the reason is many input values can be mapped to the same 
+value if we use the sine function, 
+but if we inverse this function, the original input value can not be calculated through the inverse of
+the sine function. so the neural network can not learn the mapping relationship between input and output 
+and generates a bad prediction. 
 
-We can see that the pridcton is not good, the reason is many input values can be mapping to a same value if we using sine function, but if we inverse this function, the original input value can not be calculated through the inverse of sine function.so the NN can not learn the mapping relationship between input and output and generate a bad prediction. 
-
-```{r 3.5}
+```{r 3.5,echo=FALSE,cache=TRUE}
 ###########################  3.5  #######################################
-
 # Sample 500 points
 rand_var <- runif(500, min = 0, max = 10) 
 df <- data.frame(Sin = sin(rand_var), rand_var)
-nn4 <- neuralnet(formula = rand_var ~ Sin, data = df, hidden = 10, startweights = winit, threshold = 0.1)
+nn4 <- neuralnet(formula = rand_var ~ Sin, 
+                 data = df, hidden = 10, startweights = winit, threshold = 0.1)
 pred_4 <- predict(nn4, df)
 
 plot(df, cex = 2, col = "blue")
 points(df[, 2], pred_4, col = "red", cex = 1)
 legend(x = -1, y = 8.5, legend = c("Training data", "NN Pred"),
 col = c("blue", "red"), cex = 1, pch = 1)
-
-
 ```
 
 \newpage
