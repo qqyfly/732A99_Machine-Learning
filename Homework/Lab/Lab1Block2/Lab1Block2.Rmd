@@ -537,7 +537,7 @@ Derivative of log-likelihood is:
 
 $$
 
-\sum_{i=1}^{n} \sum_{m=1}^{M} \
+
 $$
 
 ```{r setup2, include=FALSE}
