@@ -8,6 +8,12 @@ date: "`r Sys.Date()`"
 output: pdf_document
 ---
 
+## Statement of Contribution
+For Lab 1, we decided to split the three assignments equally, Qinyuan completed Assignment 1, Satya
+completed Assignment 2 and Daniele completed Assignment 3, after which, for verification's sake, we completed
+each other's assignments as well and validated our findings. The report was also compiled by three of us,
+with each handling their respective assignments.
+
 ```{r setup1, include=FALSE}
 ###########################  Init code For Assignment 1 ########################
 rm(list = ls())
@@ -16,6 +22,12 @@ library(kknn)
 library(ggplot2)
 library(Metrics)
 library(caret)
+library(dplyr)
+
+misclassification_func <- function(x1,x2){
+  n <- length(x1)
+  retuen_value <- 1 - sum(diag(table(x1,x2)))/n
+}
 ```
 
 ## Assignment 1: Handwritten digit recognition with K- nearest neighbors  (Solved by Qinyuan Qi - qinqi464)
@@ -24,12 +36,12 @@ library(caret)
 
 ### (1)
 
-The following code will import the data and divide the data into training, validation and test sets.
+We divide the data into training, validation and test sets according to the ratios 0.5, 0.25 and 0.25. Please check the appendix for the code.
 
-```{r 1.1}
+```{r 1.1,echo = FALSE}
 ######################  Assignment 1.1 #########################################
 # read data
-data <- read.csv("optdigits.csv")
+data <- read.csv("optdigits.csv", header=FALSE)
 row_num <- nrow(data)
 cols_num <- ncol(data)
 
@@ -40,250 +52,258 @@ names(data)[cols_num] <- "label_value"
 ratio <- c(train = .5, validate = .25, test = .25)
 
 # data pre-processing
-# columns 1-64 are number based and do not need to be normalized, last column
-# is integer represent number from 0-9 which don't need to process again
+# Columns 1-64 are number-based and do not need to be normalized, the last column is an integer representing numbers from 0-9 which doesn't need to be processed again
 
 # set random seed
 set.seed(12345)
-
 # split data to training, test and validation set
 train_id <- sample(1:row_num, floor(row_num * ratio[1]))
 train_set <- data[train_id, ]
 
-set.seed(12345)
 test_val_id <- setdiff(1:row_num, train_id)
+
+set.seed(12345)
 valid_id <- sample(test_val_id, floor(row_num * ratio[2]))
 valid_set <- data[valid_id, ]
-
 test_id <- setdiff(test_val_id, valid_id)
 test_set <- data[test_id, ]
 ```
 
 ### (2)
 
-The code contain a function call to kknn with k=30, kernel = ”rectangular” with distance default to 2. We calculate the confusion matrices and the misclassification errors of training and test data set as follows, the code attached in the appendix.
-As the data showed below, the overall prediction quality is not good enough when k=30. And the misclassification rate of number 0,6 is the lowest. number 8 and 9 have the highest misclassification rate.
+The code contains a function call to kknn with k=30, kernel = "rectangular". We calculate the confusion matrices and the misclassification errors of the training and test data set as follows, the code is attached in the appendix.
+As the data shown below, the diagonal of the confusion matrix is the number of correct predictions. The most correct prediction is digit 0, and the most incorrect prediction is digit 9.
+The misclassification rate of the training data set is 4.5%, and the misclassification rate of the test data set is 5.3%.
 
 ```{r 1.2,echo = FALSE}
 ######################  Assignment 1.2 #########################################
 
 k_value <- 30
-kknn_train <- kknn(label_value ~ .,
+kknn_train <- kknn(as.factor(label_value) ~ .,
                          train_set,
                          train_set,
                          k = k_value,
-                         kernel = "rectangular",scale = TRUE)
+                         kernel = "rectangular")
 
-# generate confusion matrix for training data
-confusion_matrices_train <- table(round(kknn_train$fit), train_set$label_value)
+# generate a confusion matrix for training data
+confusion_matrices_train <- table(kknn_train$fitted.values, train_set$label_value)
 
-# print confusion matrix
-#print(confusion_matrices_train)
-
-
-# calculate error rate
-error_rate_train <- mean(round(kknn_train$fit) != train_set$label_value)
-#cat("Misclassification error for training data is: ", error_rate_train, "\n")
-
-kknn_valid <- kknn(label_value ~ .,
+kknn_test <- kknn(as.factor(label_value) ~ .,
                   train_set,
-                  valid_set,
+                  test_set,
                   k = k_value,
-                  kernel = "rectangular",scale = TRUE)
+                  kernel = "rectangular")
 
-# generate confusion matrix for validate data
-confusion_matrices_valid <- table(round(kknn_valid$fit), valid_set$label_value)
+# generate a confusion matrix for test data
+confusion_matrices_test <- table(kknn_test$fitted.values, test_set$label_value)
 
-
-# print confusion matrix
-#print(confusion_matrices_valid)
-
-# calculate error rate
-error_rate_valid <- mean(round(kknn_valid$fit) != valid_set$label_value)
-#cat("Misclassification error for valid data is: ", error_rate_valid, "\n")
-
-# misclassification rates
-misclassification_rates_data_1_2 <- data.frame(name=c("Training","Validation"),
-                                               rate=c(error_rate_train,
-                                                      error_rate_valid))
-names(misclassification_rates_data_1_2)[1] <- ""                                                    
-
-# misclassification errors for each digits on training data
-misclassification_rates_for_each_digits_data_1_2 <- data.frame(c(0,9),rate=rep(0,10))
-names(misclassification_rates_for_each_digits_data_1_2)[1] <- ""
-
-for(i in 1:10){
-  misclassification_rates_for_each_digits_data_1_2[i,] <- c(i-1,mean(
-    round(kknn_train$fit) != train_set$label_value & 
-    train_set$label_value==(i-1)))
-}
-
-
-# render result to tables
+# render results to tables
 
 knitr::kable(confusion_matrices_train, 
              caption = "Confusion matrix for training data set")
-knitr::kable(confusion_matrices_valid,
-             caption = "Confusion matrix for validation data set")
-knitr::kable(misclassification_rates_data_1_2,
-             caption = "Misclassification rates")
-knitr::kable(misclassification_rates_for_each_digits_data_1_2,
-             caption = "Misclassification rates of digits using learning data set")
+knitr::kable(confusion_matrices_test,
+             caption = "Confusion matrix for test data set")
+
+misclassification_train <- misclassification_func(kknn_train$fitted.values, train_set$label_value)  
+misclassification_test <- misclassification_func(kknn_test$fitted.values, test_set$label_value)
+
+cat("Misclassification rate of training data set is ", misclassification_train, "\n")
+cat("Misclassification rate of test data set is ", misclassification_test, "\n")
 ```
 
 ### (3)
 
-By using image function, we generate first 64 [8 image] from learning data set, and we get the following plot.(We use image function instead of heatmap so we can draw more images in one plot)
+We use prob attribute to find out the easy/hard-to-identify images of label 8.
+The image samples are listed below.
 
-According to the plot, we can find that image at [3,2] and [5,2] are easy to identify. however, images such as [3,4] [4,2] [4,3] are very hard to figure out the number.
+As we can see from the heatmap, the easy-to-identify images are relatively clear and have a clear pattern, while the hard-to-identify images especially the 1st and 3rd ones are very hard to identify even for human beings.
 
 ```{r 1.3,echo = FALSE}
 ######################  Assignment 1.3 #########################################
 
-# Find all the 8 images
-train_eight <- train_set[train_set[,65]==8, 1:64]
+# get the probability of training data
+train_prob <- kknn_train$prob
 
-# draw 64 [8 images]
-par(mfrow = c(8, 8), mar=c(1,1,1,1))
+colnames(train_prob) <- c('lv_0','lv_1','lv_2','lv_3','lv_4','lv_5','lv_6','lv_7','lv_8','lv_9')
 
-for(i in 1:64){
-  row.id <- i
-  m <- matrix(as.numeric(train_eight[row.id, 1:64]), nrow=8, ncol=8)
-  image(m[,8:1], col=grey(seq(0, 1, length=16)))
-}
+# copy training data, and we have 65 columns now
+train_set_prob <- train_set
 
+# we have 66 columns now
+train_set_prob$predicted <- kknn_train$fitted.values
+
+# add digit 8 probability to this dataset, and have 67 columns now
+# we use 9 because it begin with digit 0
+train_set_prob$prob <- train_prob[,9]
+
+# order the dataset by the probability of digit 8
+# begining with the smallest probability,so hard to identify
+
+filtered_df <- dplyr::filter(train_set_prob,train_set_prob$label_value==8)
+filtered_df <- filtered_df[order(filtered_df$prob),]
+
+filtered_count <- nrow(filtered_df)
+
+# easy image 1 (last several rows of the filtered_df)
+easy_image1 <- filtered_df[filtered_count,]
+easy_image1_matrix <- matrix(as.numeric(easy_image1[,c(1:64)]), ncol = 8, byrow = TRUE)
+
+# easy image 2 (last several rows of the filtered_df)
+easy_image2 <- filtered_df[filtered_count - 1,]
+easy_image2_matrix <- matrix(as.numeric(easy_image2[,c(1:64)]), ncol = 8, byrow = TRUE)
+
+# easy image 3 (last several rows of the filtered_df)
+easy_image3 <- filtered_df[filtered_count - 2,]
+easy_image3_matrix <- matrix(as.numeric(easy_image3[,c(1:64)]), ncol = 8, byrow = TRUE)
+
+# hard image 1 (first several rows of the filtered_df)
+hard_image1 <- filtered_df[1,]
+hard_image1_matrix <- matrix(as.numeric(hard_image1[,c(1:64)]), ncol = 8, byrow = TRUE)
+
+# hard image 2 (first several rows of the filtered_df)
+hard_image2 <- filtered_df[2,]
+hard_image2_matrix <- matrix(as.numeric(hard_image2[,c(1:64)]), ncol = 8, byrow = TRUE)
+
+# hard image 3 (first several rows of the filtered_df)
+hard_image3 <- filtered_df[3,]
+hard_image3_matrix <- matrix(as.numeric(hard_image3[,c(1:64)]), ncol = 8, byrow = TRUE)
+
+cat("The following 2 images are easy to identify\n")
+# draw heatmap
+heatmap(x=easy_image1_matrix, Rowv=NA, Colv=NA)
+heatmap(x=easy_image2_matrix, Rowv=NA, Colv=NA)
+
+cat("The following 3 images are hard to identify\n")
+heatmap(x=hard_image1_matrix, Rowv=NA, Colv=NA)
+heatmap(x=hard_image2_matrix, Rowv=NA, Colv=NA)
+heatmap(x=hard_image3_matrix, Rowv=NA, Colv=NA)
 ```
 
 ### (4)
 
-Using similar code as in 1.2, we fit the knn with k = 1 to 30. 
+Using a similar code as in 1.2, we fit the knn with k = 1 to 30. 
 
-When K increase, since all the points are related to more neighbors, we can say that the model become more complex. misclassification rates also increase. And validation data's misclassification rates always greater than train data's misclassification rates.
+When K is high, since points are related to more neighbors, we can say that the model becomes less complex.
+When K is small, the model becomes more complex.
 
-According to the plot, we know that optimized K = 1 which will generate the smallest misclassification rate.
+From the plot below, we can find that the gap between the train and validation misclassification rate increases after K=7.
 
-When K = 1, we training 3 models, we got the following result in table 5.
-We can get the conclusion that the test error rate is higher than the validation error rate.
-Both validation error rate and test error rate are greater than the value we get from the training data set.
+When K = 3 or 4, it will generate the smallest misclassification rate on the validation data set, however, when k=3, the misclassification rate on the training data set is smaller, so K = 3 is our optimal K.
+
+We set k=3, and training the model and calc models, we got misclassification = 2.4%, which is much better than k = 30.
+
+We also calc the misclassification rate on test data using k=4, we got misclassification = 2.5%.
+
+and when K=1 and 2, the misclassification error rate of training data is 0.
+
+So the model here is pretty good than what we have in 1.2 which is 5.3% on test data.
 
 ```{r 1.4,echo = FALSE}
 ######################  Assignment 1.4 #########################################
 # calculate error rate for different k values
-error_rates_train <- c()
-error_rates_valid <- c()
+mis_rates_train <- c()
+mis_rates_valid <- c()
 
 for(k_value in 1:30){
  
-  kknn_train <- kknn(label_value ~ .,
+  kknn_train <- kknn(as.factor(label_value) ~ .,
                            train_set,
                            train_set,
                            k = k_value,
-                           kernel = "rectangular",scale = TRUE)
+                           kernel = "rectangular")
+  pred_train <- kknn_train$fitted.values
+  n_train <- length(train_set$label_value)  
+  mis_rate_train <- misclassification_func(train_set$label_value,pred_train)
+  
 
-  kknn_valid <- kknn(label_value ~ .,
+  
+  kknn_valid <- kknn(as.factor(label_value) ~ .,
                           train_set,
                           valid_set,
                           k = k_value,
-                          kernel = "rectangular",scale = TRUE)
-  
+                          kernel = "rectangular")
+  pred_valid <- kknn_valid$fitted.values
+  n_valid <- length(valid_set$label_value)  
+  mis_rate_valid <- misclassification_func(valid_set$label_value,pred_valid)  
+
   # train error rate
-  error_rates_train <- append(error_rates_train,
-                        mean(round(predict(kknn_train)) != train_set$label_value))
-
-
+  mis_rates_train <- c(mis_rates_train,mis_rate_train)
   # valid error rate
-  error_rates_valid <- append(error_rates_valid,
-                        mean(round(predict(kknn_valid)) != valid_set$label_value))
-
-  
+  mis_rates_valid <- c(mis_rates_valid,mis_rate_valid)
 }
 
 # plot the error rate graph
 k <- 1:30
 
-error_rate_data <- data.frame(k, error_rates_train,error_rates_valid)
+error_rate_data <- data.frame(k, mis_rates_train,mis_rates_valid)
 
 ggplot(data = error_rate_data) +
-  geom_line(mapping = aes(x=k,y=error_rates_train,colour="train")) +  
-  geom_line(mapping = aes(x=k,y=error_rates_valid,colour="validation")) +
+  geom_line(mapping = aes(x=k,y=mis_rates_train,colour="train")) +  
+  geom_line(mapping = aes(x=k,y=mis_rates_valid,colour="validation")) +
   labs(x = "K",y="Misclassification rates") +
   scale_color_manual(name = "Data set", values = c("train" = "blue", "validation" = "red"))
 
+k_value <- 3
 
-k_value <- 1
+kknn_test_optimal <- kknn(as.factor(label_value) ~ .,
+                  train_set,
+                  test_set,
+                  k = k_value,
+                  kernel = "rectangular")
 
-kknn_train <- kknn(label_value ~ .,
-                           train_set,
-                           train_set,
-                           k = k_value,
-                           kernel = "rectangular",scale = TRUE)
+# generate a confusion matrix for test data
+confusion_matrices_test_optimal <- table(kknn_test_optimal$fitted.values, test_set$label_value)
 
-kknn_valid <- kknn(label_value ~ .,
-                          train_set,
-                          valid_set,
-                          k = k_value,
-                          kernel = "rectangular",scale = TRUE)
+knitr::kable(confusion_matrices_test,
+             caption = "Confusion matrix for test data set using optimal K=3")
 
-kknn_test <- kknn(label_value ~ .,
-                          train_set,
-                          test_set,
-                          k = k_value,
-                          kernel = "rectangular",scale = TRUE)
-  
-# train error rate
-error_rate_train <- mean(round(predict(kknn_train)) != train_set$label_value)
+misclassification_test_optimal <- misclassification_func(kknn_test_optimal$fitted.values, test_set$label_value)
 
-
-# valid error rate
-error_rate_valid <- mean(round(predict(kknn_valid)) != valid_set$label_value)
-
-# test error rate
-error_rate_test <- mean(round(predict(kknn_test)) != test_set$label_value)
-
-data1_4 <- data.frame(c("Training","Validation","Test"),
-                      c(error_rate_train,error_rate_valid,error_rate_test))
-names(data1_4)[1] <- ""
-names(data1_4)[2] <- "Test Error"
-knitr::kable(data1_4,
-             caption = "Misclassification rates of when K=1")
-
+cat("Misclassification rate of test data set using optimal K=3 is ", misclassification_test_optimal, "\n")
 ```
 
 ### (5)
 
-We plot the validation error using the code attached in the appendix, the plot of validation error and K as follows.
+When K=6 we get the minimal cross entropy on test data, so the optimal K = 6.
 
-Since when K=2 get the minimal value, so the optimal K = 2.
+If a model is good according to the cross entropy error, it means it predicted the correct class with high probability. When it guesses the wrong class, it will have a low probability.
 
-The reason why we use cross-entropy is more suitable is:
-1) It is sensitive to the predicted probabilities.
-2) In multinomial distribution, the predicted value will more likely to be explained as a probability, and cross-entropy loss function is designed to compare the probability based prediction.
-
+The cross-entropy loss function is good as it utilizes the chance of the classification instead of the predicted value(class) which means low probability, say 50% for a class, will be treated differently with another one with a 90% probability for a class.
 
 ```{r 1.5,echo = FALSE}
 ######################  Assignment 1.5 #########################################
-# init value
+# use cross-entropy in 1.5
 
+# init value
 k_values <- 1:30
 epsilon <- 1e-15
-validation_errors <- numeric(length(k_values))
 
+entropies <- c()
+
+# loop possible K values
 for(k in k_values){
-    kknn_train <- kknn(label_value ~ .,
+    kknn_valid <- kknn(as.factor(label_value) ~ .,
                            train_set,
                            valid_set,
                            k = k,
-                           kernel = "rectangular",scale = TRUE)
+                           kernel = "rectangular")
+    cross_entropy_sum = 0.0
 
-    pred <- round(predict(kknn_train))
-    validation_errors[k] <- -sum(valid_set$label_value * log(pred + epsilon))
+    for(i in 0:9){
+        cross_entropy_sum <- cross_entropy_sum - 
+              sum(
+                log10(kknn_valid$prob[valid_set$label_value == i,i+1] + epsilon)
+                )
+    }
+
+    entropies <- c(entropies,cross_entropy_sum)
 }
 
-error_cross_entropy_data <- data.frame(k_values,validation_errors)
+error_cross_entropy_data <- data.frame(k_values,entropies)
 
 ggplot(data = error_cross_entropy_data) +
-  geom_line(mapping = aes(x=k_values,y=validation_errors))  +
-  labs(x = "K",y="Cross entropy error") 
+  geom_line(mapping = aes(x=k_values,y=entropies))  +
+  labs(x = "K",y="Cross entropy") 
 
 ```
 
@@ -297,176 +317,199 @@ ggplot(data = error_cross_entropy_data) +
 rm(list = ls())
 library(caret)
 knitr::opts_chunk$set(echo = TRUE)
-
 ```
 
 ### (1)
 
-We read the data and divide data into training and test data (60/40) and normalize them.
-```{r 2.1}
+We read the data, scale them, then divide the data into training and test data (60/40). Code in the appendix.
+
+```{r 2.1, echo=FALSE}
 ###########################  Assignment 2.1 ####################################
 # Load the data
-data <- read.csv("parkinsons.csv")
+data <- read.csv("parkinsons.csv",header=TRUE)
 
-# remove useless data
-data <- data[,-(1:4)]
-data <- data[,-(2)]
+# filter data
+data <- data %>% 
+dplyr::select(motor_UPDRS, starts_with("Jitter"),starts_with("Shimmer"),
+            NHR,HNR,RPDE,DFA,PPE)
 
-row_num <- nrow(data)
-cols_num <- ncol(data)
+# scale data
+data <- scale(data)
+data = data.frame(data)
 
 # Divide the data into training and test data (60/40)
 # set data split ratio
 ratio <- c(train = .6, test = .4)
 
+row_num <- nrow(data)
+
 # set random seed
 set.seed(12345)
-
 # split data
 train_id <- sample(1:row_num, floor(row_num * ratio[1]))
 train_set <- data[train_id, ]
 test_id <- setdiff(1:row_num, train_id)
 test_set <- data[test_id, ]
 
-# scale data.
-preProcValues <- preProcess(train_set, method = c("scale"))
-train_set <- predict(preProcValues,train_set)
-test_set <- predict(preProcValues,test_set)
-
 ```
-
 ### (2)
-
-
-We create a linear model, we get the output as show below.
-
-We have test MSE = 0.9354477.
-
-According to the output of the model, we also know that Jitter.RAP,Jitter.DDP,Shimmer.APQ3,Shimmer.DDA contribute significantly to the model.
+Training error and test error are as follows.
+We filter p_val < 0.05 as the significant factors, which are listed below.
 
 ```{r 2.2,echo = FALSE}
 ###########################  Assignment 2.2 ####################################
 # Linear regression model
-
-# apply linear regression(we already removed the data we don't need)
+# apply linear regression(without intercept)
 model <- lm(motor_UPDRS ~ ., data = train_set)
 
 # predict the test value using the linear regression just created
-test_pred <- predict(model, test_set)
+train_pred <- predict(model, train_set)
+# calculate train MSE
+train_mse <- mean((train_pred - train_set$motor_UPDRS)^2)
+cat("train mse is " , train_mse , "\n")
 
+# predict the test value using the linear regression just created
+test_pred <- predict(model, test_set)
 # calculate test MSE
 test_mse <- mean((test_pred - test_set$motor_UPDRS)^2)
 cat("test mse is " , test_mse , "\n")
-model
+
+# we filter p_val < 0.05 as the significant factors using dplyr package
+significant_df <- data.frame(p_val = summary(model)$coefficients[,4]) %>%
+                  filter(p_val < 0.05) %>%
+                  arrange(p_val)
+                
+print(significant_df)
 ```
 
 ### (3)
 
-Functions implemented as below.
-```{r 2.3}
+The loglikelihood function has the following formula:
+
+$$
+ln(p(y|X;\theta) = -\frac{n}{2}ln(2pi\sigma_{\varepsilon}^2) - \frac{1}{2\sigma_{\varepsilon}^2} \sum_{i=1}^{n}(\theta^Tx_i - y_i)^2
+$$
+
+According to the statement of the question, in the ridge function, we need to adds up a Ridge penalty to the minus of log-likelihood, which is as follows
+
+$$
+ridge\_penalty - loglikelihood() = \lambda \sum(\theta^2) - loglikelihood()
+$$
+
+
+RidgeOpt will use the optim function to find the optimal theta and sigma.
+
+The df function has the following formula:
+$$
+df(\hat(y)) = \frac{1}{\sigma^2}\sum_{i=1}^{n}cov(\hat{y_i},y_i)
+$$
+
+Functions implemented and listed in the appendix.
+```{r 2.3, echo=FALSE}
 ###########################  Assignment 2.3 ####################################
 # Loglikelihood function
-loglikelihood <- function(x,y, theta, sigma) {
-  n <- length(x)
-  log_likelihood_value <- -0.5 * (n * log(2 * pi * sigma^2)) -
-                          sum((t(theta) * x - y)^2) / (2 * sigma^2)
+loglikelihood <- function(theta, sigma) {
+  n <- length(train_set[,1])
+  x <- train_set[,-1]
+  y <- train_set[,1]
+  log_likelihood_value <- -n/2 * log(2 * pi * sigma^2,exp(1)) -
+                          sum((theta %*% t(x)- y)^2) / (2 * sigma^2)
   return(log_likelihood_value)
 }
 
 # ridge
-ridge <- function(par,x,y,lambda) {
-
-  param_length <- length(par)
-
-  theta <- par[1:param_length - 1]
-  sigma <- par[param_length]
-
-  loglikelihood_result <- loglikelihood(x,y,theta, sigma)
+ridge <- function(theta,sigma,lambda) {
+  loglikelihood_result <- loglikelihood(theta, sigma)
   ridge_penalty <- lambda * sum(theta^2)
-  return(loglikelihood_result - ridge_penalty)
+  return(ridge_penalty - loglikelihood_result)
 }
 
 # ridgeopt
-ridgeopt <- function(initial_values, x,y,lambda ) {
-  # Use optim function
-  
-  result <- optim(par = initial_values, ridge, method = "BFGS",
-                  x = x, y = y,lambda = lambda)
+ridgeOpt <- function(lambda) {
+  # Use the optim function  
+  result <- optim(par = numeric(length(train_set[1,-1])), fn = ridge, method = "BFGS",
+                  sigma = sigma(model), lambda = lambda)
   return(result)
 }
 
-# df
-df <- function(x, y, theta, sigma) {
-  hat_y <- t(theta) %*% x
-  return(sum(cov(hat_y, y)) / sigma^2)
+# df function
+df <- function(lambda) {
+  opt = ridgeOpt(lambda)
+  sigma_sqr <- var(train_set[,1])
+  y <- train_set[,1]
+  n <- length(train_set[,1])
+  y_hat <- numeric(n)
+  for(i in 1:n){
+    y_hat[i] <- opt$par %*% t(train_set[i,-1])
+  }
+  return (1 / sigma_sqr * cov(y_hat,y))
 }
 
 ```
 
 ### (4)
 
-Functions implemented as below.
-```{r 2.4}
-###########################  Assignment 2.4 ####################################
+We use the function implemented in section 2.3 and calculate the optimal theta for $\lambda = 1, 100, 1000$.
 
-x <- train_set[,-1]
-y <- train_set$motor_UPDRS
-colnum_num <- ncol(x)
+$\theta$ are as follows:
+
+```{r 2.4,echo=FALSE}
+###########################  Assignment 2.4 ####################################
+mse_new <- function(theta, subset){
+  x <- subset[,-1]
+  y <- subset[,1]
+  n <- length(y)  
+  mse_value <- sum((theta %*% t(x) - y)^2) / n
+  return(mse_value)
+}
+
 
 #lambda <- 1
-theta <- rep(1, ncol(x))
-sigma <- 1
-initial_values <- c(theta, sigma)
-result1 <- ridgeopt(initial_values=initial_values, x = x, y=y,lambda = 1 )
-result1
-#train_pred1 <- t(train_set[,-1]) %*% result1$par[,1:colnum_num-1] + result1$par[,colnum_num]
-#train_mse1 <- mean((train_pred1 - train_set$motor_UPDRS)^2)
-#test_pred1 <- test_set[,-1] %*% result1$par[,1:colnum_num-1] + result1$par[,colnum_num]
-#test_mse1 <- mean((test_pred1 - test_set$motor_UPDRS)^2)
-#df1 <- df(x,y,result1$par[,1:colnum_num-1],result1$par[,colnum_num])
-
-
+result1 <- ridgeOpt(lambda = 1 )
+df1 <- df(1)
+mse_train_1 <- mse_new(result1$par, train_set)
+mse_test_1 <- mse_new(result1$par, test_set)
 
 #lambda <- 100
-theta <- rep(1, ncol(x))
-sigma <- 1
-initial_values <- c(theta, sigma)
-result100 <- ridgeopt(initial_values=initial_values, x = x, y=y,lambda = 100 )
-result100
-#train_pred100 <- train_set[,-1] %*% result100$par[,1:colnum_num-1] + result100$par[,colnum_num]
-#train_mse100 <- mean((train_pred100 - train_set$motor_UPDRS)^2)
-#test_pred100 <- test_set[,-1] %*% result100$par[,1:colnum_num-1] + result100$par[,colnum_num]
-#test_mse100 <- mean((test_pred100 - test_set$motor_UPDRS)^2)
-#df100 <- df(x,y,result100$par[,1:colnum_num-1],result100$par[,colnum_num])
+result100 <- ridgeOpt(lambda = 100 )
+df100 <- df(100)
+mse_train_100 <- mse_new(result100$par, train_set)
+mse_test_100 <- mse_new(result100$par, test_set)
 
 #lambda <- 1000
-theta <- rep(1, ncol(x))
-sigma <- 1
-initial_values <- c(theta, sigma)
-result1000 <- ridgeopt(initial_values=initial_values, x = x, y=y,lambda = 1000 )
-result1000
+result1000 <- ridgeOpt(lambda = 1000 )
+df1000 <- df(1000)
+mse_train_1000 <- mse_new(result1000$par, train_set)
+mse_test_1000 <- mse_new(result1000$par, test_set)
 
-#train_pred1000 <- train_set[,-1] %*% result1000$par[,1:colnum_num-1] + result1000$par[,colnum_num]
-#train_mse1000 <- mean((train_pred1000 - train_set$motor_UPDRS)^2)
-#test_pred1000 <- test_set[,-1] %*% result1000$par[,1:colnum_num-1] + result1000$par[,colnum_num]
-#test_mse1000 <- mean((test_pred1000 - test_set$motor_UPDRS)^2)
-#df1000 <- df(x,y,result1000$par[,1:colnum_num-1],result1000$par[,colnum_num])
-
-
-#data2_4 <- data.frame(c("1","100","1000"),
-#                      c(mse1,mse100,mse1000),
-#                      c(pred1,pred100,pred1000),
-#                      c(df1,df100,df1000))
-
-#names(data2_4)[1] <- "lambda"
-#names(data2_4)[2] <- "MSE"
-#names(data2_4)[3] <- "Predicted Value"
-#names(data2_4)[4] <- "df"
-
-#knitr::kable(data2_4,
-#             caption = "Values when lambda=1,100,1000")
+cat("par value when lambda = 1 is \n")
+print(result1$par)
+cat("par value when lambda = 100 is \n")
+print(result100$par)
+cat("par value when lambda = 1000 is \n")
+print(result1000$par)
 
 ```
+As we can see from the result above, when $\lambda$ increases to a large number, say 1000, the value gets relatively smaller than when $\lambda$ is small.
+
+According to the formula of the ridge regression, when $\lambda$ increases, ridge_penalty will increase, then this value will be used to calculate the optimal $\theta$ when calling optim function.
+
+MSE and df information are as follows.
+
+```{r 2.4.1,echo=FALSE}
+cat("train mse is " , train_mse , "\n")
+cat("test mse is " , test_mse , "\n")
+```
+
+|         | $\lambda = 1$     | $\lambda = 100$       | $\lambda = 1000$    |
+|---------|-------------------|-----------------------|-------------------  |
+|mse_train| `r mse_train_1 `  | `r mse_train_100 `    | `r mse_train_1000 ` |
+|mse_test | `r mse_test_1 `   | `r mse_test_100 `     | `r mse_test_1000 `  |
+|df       | `r df1 `          | `r df100 `            | `r df1000 `         |
+
+According to the table above, we find that when $\lambda$ increases, training mse will increase and df will decrease at the same time.
+
+Since our ridge model is trained using training data, a deviation value will be added to the model. when a large $\lambda$ is used, it will oversimplify the model and some information will lost. we also find that mse_test get higher when $\lambda$ is large, which means the model is overfitting. So in our case, $\lambda = 100$ is the best choice.
 
 ## Assignment 3. Logistic regression and basis function expansion (Solved by Daniele	Bozzoli)
 
@@ -477,102 +520,153 @@ result1000
 rm(list = ls())
 knitr::opts_chunk$set(echo = TRUE)
 library(ggplot2)
+
+misclassification_func <- function(x1,x2){
+  n <- length(x1)
+  retuen_value <- 1 - sum(diag(table(x1,x2)))/n
+}
+
 ```
 
 ### (1)
 
-```{r 3.1,echo = FALSE}
-data <- read.csv("pima-indians-diabetes.csv")
+```{r 3.1.1,echo = FALSE}
+###########################  3.1.1#############################################
+data <- read.csv("pima-indians-diabetes.csv",header=FALSE)
 
+# get age and plasma values
 age <- data[, 8]
 plasma <- data[, 2]
 
+# set the column names
 names(data)[9] <- "diabetes"
 names(data)[2] <- "plasma"
 names(data)[8] <- "age"
 
+# make data frame
 x <- age
 y <- plasma
 df <- data.frame(x, y)
 
-ggplot2::ggplot(df, ggplot2::aes(age, plasma)) +
-  ggplot2::geom_point(ggplot2::aes(colour = data[, 9]))+
-  ggplot2::labs(x = "Age", y="Plasma glucose")
-
+# plot the data
+ggplot2::ggplot(df, ggplot2::aes(age,plasma)) +
+  ggplot2::geom_point(ggplot2::aes(colour = as.factor(data[, 9])))+
+  ggplot2::labs(x = "Age", y="Plasma glucose") + 
+  guides(color = guide_legend(title = 'Diabetes'))
 ```
 
-We observe how a lot of people without diabete is highly concentrated in the lower 
-part of the age axis, explaining how younger individuals tend to be non-diabetic,
-on the other hand, we notice how especially people with higher plasma glucose 
-concentration tend to be diabetic, less concentrated in a specific age group, more
-spread across the x-age axis.
+The scatterplot above is for plasma glucose concentration on age colored by different diabetes values.
 
-### (2)(3)
+According to the plot, When find that when the age is relatively small, at the range of years 20-30, when the plasma glucose value is above 150, the person is more likely to have diabetes, and when the plasma glucose value is less than 125, the person is less likely to have diabetes.
 
-Code as below.
-Looking at the graph, we notice how the classification is not very accurate. Though, it 
-catches the fact that people with higher plasma glucose concentration are more 
-commonly diabetic. We obtain a misclassification error = 0.266.
+While at high age, we can hardly find any pattern indicating the relationship between plasma glucose/age and diabetes.
 
-```{r 3.2_3.3}
+Even if we have a logistic regression model above, since there are several points mixed at the high age, it is not easy to classify by a standard logistic regression model by only using 2 variables.
 
-model <- glm(diabetes ~ plasma + age, fam = binomial(link="logit"), data = data)
+
+
+### (2)-(3)
+
+We build a logistic regression model with plasma and age as predictors. The model is as follows:
+
+$$
+diabetes = -5.912449 + 0.035644 \times plasma + 0.024778 \times age
+$$
+
+And the boundary line is as follows:
+$$
+plasma = -(-5.912449 + 0.035644 \times age) / 0.024778
+$$
+
+Code in the appendix.
+
+```{r 3.2_3.3,echo=FALSE}
+###########################  3.2,3,3 ##########################################
+model <- glm(diabetes ~ plasma + age, 
+            family = binomial,
+            data = data)
 summary(model)
+diabete_prob <- predict(model, type="response")
 
-# r = 0.5
+r <- 0.5
 
-c1 <- fitted(model) >= .5
+diabet_pred <- ifelse(diabete_prob > r,1,0)
 
-missC_error <- sum(data$diabetes != c1) / nrow(data)
+missC_error <- misclassification_func(data$diabetes,diabet_pred)
+
 cat("Misclassification error:", missC_error, "\n")
 
-ggplot2::ggplot(df, ggplot2::aes(age, plasma)) +
-  ggplot2::geom_point(ggplot2::aes(colour = c1))+
-  ggplot2::labs(x = "Age", y="Plasma glucose")     # T = Diabetic, F = Non-diabetic
+# calc the boundary line
+x <- seq(20, 85)
+y <- -(model$coefficients["(Intercept)"] + model$coefficients["age"] * x) / model$coefficients["plasma"]
 
+# make data frame
+df_boundary <- data.frame(x, y)
+
+ggplot(df, ggplot2::aes(age,plasma)) +
+  geom_point(ggplot2::aes(colour = as.factor(diabet_pred)))+
+  labs(x = "Age", y="Plasma glucose concentration") +
+  guides(color = guide_legend(title = 'Predicted Diabetes')) +
+  geom_line(data = df_boundary, aes(x = x, y = y), color = "blue") +
+  ggtitle("Age vs Plasma When r = 0.5")
 ```
-
+We check the graph plotted above, we find that the classification is not very accurate with a misclassification error = 0.263. Compared to the plot in 3.1, we can see that it catches the pattern we were talking about which is the low age side, but on the high age side, it is not very accurate. And the quality of the classification is not good enough.
 
 ### (4)
 
-It looks like the line that splits the predicted observations into diabetic
-and non diabetic into the two cases ( r= 0.2 and r=0.8) has the same slope, but
-different intercept. Both cases are pretty bad predictors as 0.2 and 0.8 are
-respectively too low and too high to get a good classification for our case.
+We set r= 0.2 and r=0.8 respectively, and plot the graphs as below.
+
+According to the plots, we found that when r=0.2, the misclassification error is 0.37, and when r=0.8, the misclassification error is 0.31. The misclassification error is the much higher than r=0.5, which is 0.263.
+
+We also find that when we set r to a higher value, say 0.8, the model is more likely to predict fewer people having diabetes. while when we set r to a lower value, say 0.2, the model is more likely to predict more people having diabetes.
+
+But in the real case, sometimes it's better to predict more people having diabetes, to make sure those high-risk people can get more attention and have body health checks.
 
 ```{r 3.4,echo = FALSE}
 
-# r = 0.2
+r <- 0.2
 
-c2 <- fitted(model) >= .2
+diabet_pred <- ifelse(diabete_prob > r,1,0)
 
-ggplot2::ggplot(df, ggplot2::aes(age, plasma)) +
-  ggplot2::geom_point(ggplot2::aes(colour = c2))+
-  ggplot2::labs(x = "Age", y="Plasma glucose")
+missC_error <- misclassification_func(data$diabetes,diabet_pred)
 
-# r = 0.8
+cat("Misclassification error when r = 0.2:", missC_error, "\n")
 
-c3 <- fitted(model) >= .8
+ggplot(df, ggplot2::aes(age,plasma)) +
+  geom_point(ggplot2::aes(colour = as.factor(diabet_pred)))+
+  labs(x = "Age", y="Plasma glucose concentration") +
+  guides(color = guide_legend(title = 'Predicted Diabetes')) +
+  ggtitle("Age vs Plasma When r = 0.2")
 
-ggplot2::ggplot(df, ggplot2::aes(age, plasma)) +
-  ggplot2::geom_point(ggplot2::aes(colour = c3))+
-  ggplot2::labs(x = "Age", y="Plasma glucose")
+r <- 0.8
+
+diabet_pred <- ifelse(diabete_prob > r,1,0)
+
+missC_error <- misclassification_func(data$diabetes,diabet_pred)
+
+cat("Misclassification error when r = 0.8:", missC_error, "\n")
+
+ggplot(df, ggplot2::aes(age,plasma)) +
+  geom_point(ggplot2::aes(colour = as.factor(diabet_pred)))+
+  labs(x = "Age", y="Plasma glucose concentration") +
+  guides(color = guide_legend(title = 'Predicted Diabetes')) +
+  ggtitle("Age vs Plasma When r = 0.8")
 
 ```
 
 ### (5)
 
-The outcome of this analysis is better than the first case, as we obtain a 
-lower misclassification error than before, and also graphically we notice
-how this version captures what we were saying in the first part of the 
-analysis, how people with higher plasma glucose concentration are more 
-exposed to the risk of having diabete. We also notice how we strangely get a 
-misclassificated predicted value in the bottom right corner of the graph.
+We construct a new model by adding new variables $z_1 = plasma^4$,$z2 = plasma^3 \times age$,$z3 = plasma^2 \times age^2$,$z4 = plasma \times age^3$,$z5 = age^4$ and with default r = 0.5.
+
+As can be seen from the result, we get a misclassification error of 0.24479, which is better than the model in 3.3 which is 0.263.
+
+Using the basis expansion trick will make the decision boundary more complex than the previous model. And the new model is more likely to predict the correct class better. However, if the model is too complex, it may lead to overfitting.
+
+According to the plot, we know that the boundary line in this case is a U-sharp curve.
 
 ```{r 3.5, echo = FALSE}
 
 # Adding new variables, logit function with r= 0.5
-
 z1 <- data$plasma^4
 z2 <- data$plasma^3 * data$age
 z3 <- data$plasma^2 * data$age^2
@@ -585,17 +679,22 @@ newmodel <- glm(diabetes ~ plasma + age + z1 + z2 + z3 + z4 + z5 , family = bino
 
 summary(newmodel)
 
-c4 <- fitted(newmodel) >= .5
+r <- 0.5
 
-new_missC_error <- sum(data$diabetes != c4) / nrow(data)
-cat("Misclassification error:", new_missC_error, "\n")
+diabete_prob <- predict(newmodel, type="response")
 
-ggplot2::ggplot(df, ggplot2::aes(age, plasma)) +
-  ggplot2::geom_point(ggplot2::aes(colour = c4))+
-  ggplot2::labs(x = "Age", y="Plasma glucose")
+diabet_pred <- ifelse(diabete_prob > r,1,0)
 
+missC_error <- misclassification_func(data$diabetes,diabet_pred)
+
+cat("Misclassification error when r = 0.5:", missC_error, "\n")
+
+ggplot(df, ggplot2::aes(age,plasma)) +
+  geom_point(ggplot2::aes(colour = as.factor(diabet_pred)))+
+  labs(x = "Age", y="Plasma glucose concentration") +
+  guides(color = guide_legend(title = 'Predicted Diabetes')) +
+  ggtitle("Age vs Plasma When r = 0.5")
 ```
-
 
 
 
