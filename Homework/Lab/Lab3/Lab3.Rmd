@@ -1,20 +1,4 @@
----
-title: "Machine Learning Computer Lab 1 Block2 (Group A7)"
-author: 
-  - Qinyuan Qi(qinqi464)
-  - Satya Sai Naga Jaya Koushik	Pilla (satpi345)
-  - Daniele	Bozzoli(danbo826)  
-date: "`r Sys.Date()`"
-output: 
-    pdf_document
----
 
-
-## Statement of Contribution
-For Lab 3, we decided to split the three assignments equally, Qinyuan completed Assignment 1, Satya
-completed Assignment 2 and Daniele completed Assignment 3, after which, for verification's sake, we completed
-each other's assignments as well and validated our findings. The report was also compiled by three of us,
-with each handling their respective assignments.
 
 ## Assignment 1: KERNEL METHODS(Solved by Qinyuan Qi)
 
@@ -27,6 +11,7 @@ In this assignment, we will try to predict the temperature of Linköping Univers
 rm(list = ls())
 knitr::opts_chunk$set(echo = TRUE)
 library(geosphere)
+library(readxl)
 set.seed(1234567890)
 ```
 
